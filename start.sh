@@ -1,41 +1,35 @@
 #!/usr/bin/env bash
-# BlockProof 一键启动 (NixOS + fish shell)
-set -e
+# BlockProof 一键启动
+# 用法: bash start.sh
 DIR="$(cd "$(dirname "$0")" && pwd)"
+GREEN='\033[0;32m'; RED='\033[0;31m'; CYAN='\033[0;36m'; NC='\033[0m'
+log(){ echo -e "${GREEN}[✓]${NC} $1"; }
+err(){ echo -e "${RED}[✗]${NC} $1"; }
 
-GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
-log()   { echo -e "${GREEN}[✓]${NC} $1"; }
-warn()  { echo -e "${YELLOW}[!]${NC} $1"; }
-banner(){ echo -e "${CYAN}$1${NC}"; }
+echo -e "${CYAN}BlockProof 一键启动${NC}"
 
-banner "BlockProof 一键启动"
-
-# ── 0. 权限 ──
-[ -w "$DIR" ] || { warn "修权限..."; sudo chown -R "$USER:users" "$DIR"; }
-
-# ── 1. 依赖检查 ──
-[ -d "$DIR/node_modules" ] || { log "安装根依赖..."; cd "$DIR"; npm install; }
-[ -d "$DIR/frontend/node_modules" ] || { log "安装前端依赖..."; cd "$DIR/frontend"; npm install; }
-[ -d "$DIR/backend/venv" ] || {
-    log "创建后端 venv..."; cd "$DIR/backend"; python3 -m venv venv
-    source venv/bin/activate; pip install -q -r requirements.txt
-}
-
-# ── 2. 编译合约 ──
-[ -d "$DIR/artifacts" ] || { log "编译合约..."; cd "$DIR"; npx hardhat compile; }
-
-# ── 3. 启动链 ──
+# 1. 后台起链
+log "启动 Hardhat 链..."
 NIXPKGS_ALLOW_UNFREE=1 nix-shell -p nodejs solc steam-run \
     --run "steam-run npx hardhat node" > /tmp/hardhat-node.log 2>&1 &
-sleep 4
+log "等待链就绪..."
+for i in $(seq 1 30); do
+    curl -s -X POST http://127.0.0.1:8545 \
+        -H "Content-Type: application/json" \
+        -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+        2>/dev/null | grep -q result && break
+    sleep 1
+done
+log "链已就绪"
 
-# ── 4. 部署合约 ──
+# 2. 部署合约
 cd "$DIR"
-ADDR=$(npx hardhat run contracts/deploy.js --network localhost 2>&1 | grep -oP '0x[a-fA-F0-9]{40}')
-[ -z "$ADDR" ] && { warn "部署失败，检查 /tmp/hardhat-node.log"; exit 1; }
+OUT=$(npx hardhat run contracts/deploy.js --network localhost 2>&1)
+ADDR=$(echo "$OUT" | grep -oP '0x[a-fA-F0-9]{40}')
+if [ -z "$ADDR" ]; then err "部署失败: $OUT"; exit 1; fi
 log "合约: $ADDR"
 
-# ── 5. 写 .env ──
+# 3. 写 .env
 cd "$DIR/backend"
 cat > .env << EOF
 RPC_URL=http://127.0.0.1:8545
@@ -49,16 +43,25 @@ UPLOAD_DIR=./uploads
 MAX_UPLOAD_SIZE_MB=50
 RATE_LIMIT=30/minute
 EOF
+log ".env 已生成"
 
-# ── 6. 后端 ──
+# 4. 创建 venv (如果不存在)
+[ -d venv ] || { python3 -m venv venv; source venv/bin/activate; pip install -q -r requirements.txt; }
+
+# 5. 启后端
+log "启动后端..."
+kill $(lsof -t -i:8000) 2>/dev/null || true
 source venv/bin/activate
-python3 -m uvicorn main:app --host 127.0.0.1 --port 8000 > /tmp/backend.log 2>&1 &
-log "后端: http://127.0.0.1:8000"
+nohup python3 -m uvicorn main:app --host 127.0.0.1 --port 8000 > /tmp/backend.log 2>&1 &
+sleep 2
+curl -s http://127.0.0.1:8000/ > /dev/null && log "后端: http://127.0.0.1:8000" || err "后端启动失败: tail /tmp/backend.log"
 
-# ── 7. 前端 ──
+# 6. 启前端
 cd "$DIR/frontend"
-BROWSER=none npm start > /tmp/frontend.log 2>&1 &
-log "前端: http://localhost:3000"
+log "启动前端..."
+kill $(lsof -t -i:3000) 2>/dev/null || true
+nohup npm start > /tmp/frontend.log 2>&1 &
+sleep 4
+curl -s http://localhost:3000 > /dev/null && log "前端: http://localhost:3000" || err "前端启动失败: tail /tmp/frontend.log"
 
-echo ""
-banner "启动完成！浏览器打开 http://localhost:3000"
+echo -e "\n${GREEN}启动完成！${NC}"
