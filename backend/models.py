@@ -1,5 +1,7 @@
+# Pydantic 数据模型，定义了所有 API 的请求/响应格式
+
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 
 class UploadResponse(BaseModel):
@@ -9,6 +11,26 @@ class UploadResponse(BaseModel):
     ipfs_cid: str
     tx_hash: str
     block_number: int
+    message: str
+
+
+class BatchItemResult(BaseModel):
+    """批量上传中单个文件的结果"""
+    file_name: str
+    success: bool
+    file_hash: Optional[str] = None
+    ipfs_cid: Optional[str] = None
+    tx_hash: Optional[str] = None
+    block_number: Optional[int] = None
+    error: Optional[str] = None
+
+
+class BatchUploadResponse(BaseModel):
+    """批量上传整体响应"""
+    total: int
+    succeeded: int
+    failed: int
+    results: List[BatchItemResult]
     message: str
 
 

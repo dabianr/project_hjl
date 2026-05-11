@@ -1,5 +1,5 @@
 import React from "react";
-import { FileText, ExternalLink } from "lucide-react";
+import { FileText } from "lucide-react";
 
 export default function EvidenceList({ logs, onRefresh }) {
   if (!logs || logs.length === 0) {
