@@ -1,0 +1,15 @@
+{
+  "name": "blockchain-evidence-system",
+  "version": "1.0.0",
+  "description": "区块链电子文件存证系统",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "node": "npx hardhat node",
+    "deploy": "npx hardhat run contracts/deploy.js --network localhost"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "dotenv": "^16.4.7",
+    "hardhat": "^2.22.18"
+  }
+}

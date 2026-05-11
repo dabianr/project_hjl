@@ -1,0 +1,12 @@
+node_modules/
+artifacts/
+cache/
+backend/uploads/
+backend/evidence.db
+backend/.env
+backend/__pycache__/
+frontend/build/
+frontend/node_modules/
+__pycache__/
+*.pyc
+.claude/
