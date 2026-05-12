@@ -34,32 +34,13 @@ export default function App() {
   }, [theme]);
 
   const connectWallet = useCallback(async () => {
-    setWalletError(null);
-    if (!window.ethereum) { setWalletError("请安装浏览器钱包后刷新页面"); return; }
+    // 钱包非必须——有就连，没有不报错
+    if (!window?.ethereum?.request) { setWalletError("未检测到钱包，上传功能不受影响"); return; }
     try {
-      // 先切到 anvil 网络，避免钱包连不上
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x7A69" }],
-        });
-      } catch (sw) {
-        if (sw.code === 4902) {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: "0x7A69",
-              chainName: "Localhost 8545",
-              rpcUrls: ["http://127.0.0.1:8545"],
-              nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
-            }],
-          });
-        }
-      }
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       if (accounts.length > 0) { setAccount(accounts[0]); addToast("success", "钱包已连接"); }
     } catch (err) {
-      addToast("error", err.code === 4001 ? "你拒绝了连接" : `连接失败: ${err.message}`);
+      if (err.code !== 4001) addToast("info", "跳过钱包连接，上传照常可用");
     }
   }, []);
 
