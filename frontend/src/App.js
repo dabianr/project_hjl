@@ -126,9 +126,9 @@ export default function App() {
             >{tab.label}</button>
           ))}
         </div>
-        {activeTab === "upload" && <ErrorBoundary><UploadDropzone onSuccess={onUploadSuccess} apiBase={API_BASE} /></ErrorBoundary>}
-        {activeTab === "list" && <ErrorBoundary><EvidenceList logs={logs} onRefresh={fetchLogs} apiBase={API_BASE} /></ErrorBoundary>}
-        {activeTab === "verify" && <ErrorBoundary><VerifyTool apiBase={API_BASE} /></ErrorBoundary>}
+        {activeTab === "upload" && <ErrorBoundary key="upload"><UploadDropzone onSuccess={onUploadSuccess} apiBase={API_BASE} /></ErrorBoundary>}
+        {activeTab === "list" && <ErrorBoundary key="list"><EvidenceList logs={logs} onRefresh={fetchLogs} apiBase={API_BASE} /></ErrorBoundary>}
+        {activeTab === "verify" && <ErrorBoundary key="verify"><VerifyTool apiBase={API_BASE} /></ErrorBoundary>}
       </main>
       <footer className="py-6 mt-16" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>
         <div className="text-center text-xs opacity-40">BlockProof — 区块链电子文件存证系统 | Ethereum + IPFS + SM3</div>

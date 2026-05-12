@@ -1,10 +1,28 @@
-// 拖拽上传组件，支持单文件和多文件批量上传
-// react-dropzone + axios 调后端 API
-
+// 拖拽上传组件，支持单文件和多文件批量上传 + 文件类型图标 + 状态覆盖
 import React, { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import axios from "axios";
-import { UploadCloud, File, X, CheckCircle2, Loader2, ShieldCheck, AlertCircle, Layers } from "lucide-react";
+import { UploadCloud, File, FileText, Image, Archive, X, CheckCircle2, Loader2, ShieldCheck, AlertCircle, Layers, XCircle } from "lucide-react";
+
+function getFileIcon(name) {
+  const ext = (name || "").split(".").pop()?.toLowerCase();
+  if (["jpg","jpeg","png","gif","webp","svg","bmp"].includes(ext)) return Image;
+  if (["pdf","doc","docx","txt","md","csv","xls","xlsx","ppt","pptx"].includes(ext)) return FileText;
+  if (["zip","rar","7z","tar","gz","bz2"].includes(ext)) return Archive;
+  return File;
+}
+
+function getIconColor(ext) {
+  const e = (ext || "").toLowerCase();
+  if (["jpg","jpeg","png","gif","webp","svg","bmp"].includes(e)) return "#10b981";
+  if (["pdf","doc","docx","txt","md","csv","xls","xlsx","ppt","pptx"].includes(e)) return "#6366f1";
+  if (["zip","rar","7z","tar","gz","bz2"].includes(e)) return "#f59e0b";
+  return "#06d6d6";
+}
+
+function getExt(filename) {
+  return (filename || "").split(".").pop() || "";
+}
 
 export default function UploadDropzone({ onSuccess, apiBase }) {
   const [files, setFiles] = useState([]);
@@ -13,6 +31,8 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
   const [batchResult, setBatchResult] = useState(null);
   const [error, setError] = useState(null);
   const [singleResult, setSingleResult] = useState(null);
+  // 每个文件的上传状态: null / "success" / "error"
+  const [fileStatus, setFileStatus] = useState({});
 
   const onDrop = useCallback((accepted) => {
     setFiles(accepted.map((f) => Object.assign(f, { id: `${f.name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` })));
@@ -20,6 +40,7 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
     setBatchResult(null);
     setError(null);
     setProgress(0);
+    setFileStatus({});
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -40,9 +61,10 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
     setSingleResult(null);
     setBatchResult(null);
     setError(null);
+    setFileStatus({});
   };
 
-  // 单文件上传（兼容旧 API）
+  // 单文件上传
   const handleSingleUpload = async () => {
     if (files.length !== 1) return;
     const formData = new FormData();
@@ -59,17 +81,19 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
       clearInterval(timer);
       setProgress(100);
       setSingleResult(data);
+      setFileStatus({ [files[0].id]: "success" });
       onSuccess && onSuccess();
     } catch (err) {
       clearInterval(timer);
       setProgress(0);
+      setFileStatus({ [files[0].id]: "error" });
       setError(err.response?.data?.detail || err.message || "上传失败");
     } finally {
       setUploading(false);
     }
   };
 
-  // 批量上传（调 /batch-upload）
+  // 批量上传
   const handleBatchUpload = async () => {
     if (files.length === 0) return;
     const formData = new FormData();
@@ -86,6 +110,13 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
       clearInterval(timer);
       setProgress(100);
       setBatchResult(data);
+      // 标记每个文件状态
+      const status = {};
+      (data.results || []).forEach((r, i) => {
+        const f = files[i];
+        if (f) status[f.id] = r.success ? "success" : "error";
+      });
+      setFileStatus(status);
       onSuccess && onSuccess();
     } catch (err) {
       clearInterval(timer);
@@ -134,23 +165,30 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
                   </button>
                 )}
               </div>
-              {files.map((f) => (
-                <div key={f.id}
-                  className="flex items-center gap-3 p-3 rounded-lg"
-                  style={{ background: "rgba(255,255,255,0.03)" }}>
-                  <File className="w-6 h-6 shrink-0" style={{ color: "#06d6d6" }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="dark:text-white text-gray-900 text-sm truncate">{f.name}</p>
-                    <p className="text-gray-500 text-xs">{(f.size / 1024).toFixed(1)} KB</p>
+              {files.map((f) => {
+                const ext = getExt(f.name);
+                const Icon = getFileIcon(f.name);
+                const status = fileStatus[f.id];
+                return (
+                  <div key={f.id}
+                    className="flex items-center gap-3 p-3 rounded-lg relative"
+                    style={{ background: "rgba(255,255,255,0.03)" }}>
+                    <Icon className="w-6 h-6 shrink-0" style={{ color: getIconColor(ext) }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="dark:text-white text-gray-900 text-sm truncate">{f.name}</p>
+                      <p className="text-gray-500 text-xs">{(f.size / 1024).toFixed(1)} KB</p>
+                    </div>
+                    {!uploading && !status && (
+                      <button onClick={(e) => { e.stopPropagation(); removeFile(f.id); }}
+                        className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-500 hover:text-red-400">
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                    {status === "success" && <CheckCircle2 className="w-5 h-5 text-green-400" />}
+                    {status === "error" && <XCircle className="w-5 h-5 text-red-400" />}
                   </div>
-                  {!uploading && (
-                    <button onClick={(e) => { e.stopPropagation(); removeFile(f.id); }}
-                      className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-500 hover:text-red-400">
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -184,7 +222,7 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
 
       {/* 错误 */}
       {error && (
-        <div className="max-w-md mx-auto p-4 rounded-xl text-sm text-center"
+        <div className="max-w-md mx-auto p-4 rounded-xl text-sm text-center fade-in"
              style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171" }}>
           {error}
         </div>
@@ -197,7 +235,7 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
 
       {/* 批量结果 */}
       {batchResult && (
-        <div className="max-w-2xl mx-auto space-y-4">
+        <div className="max-w-2xl mx-auto space-y-4 fade-in">
           <div className="card-glow p-6" style={{ borderColor: "rgba(34,197,94,0.2)" }}>
             <div className="flex items-center gap-3 mb-4">
               <CheckCircle2 className="w-7 h-7 text-green-400" />
@@ -211,13 +249,11 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
                 </p>
               </div>
             </div>
-
-            {/* 每个文件的详情 */}
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {batchResult.results.map((r, i) => (
                 <div key={i}
-                  className="p-3 rounded-lg"
-                  style={{ background: r.success ? "rgba(34,197,94,0.05)" : "rgba(239,68,68,0.05)" }}>
+                  className="p-3 rounded-lg fade-in"
+                  style={{ animationDelay: `${i * 0.05}s`, background: r.success ? "rgba(34,197,94,0.05)" : "rgba(239,68,68,0.05)" }}>
                   <div className="flex items-center gap-2 mb-1">
                     {r.success ? (
                       <CheckCircle2 className="w-4 h-4 text-green-400" />
@@ -251,7 +287,7 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
 // 单文件成功结果卡片
 function ResultCard({ result, onReset }) {
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto fade-in">
       <div className="card-glow p-6" style={{ borderColor: "rgba(34,197,94,0.2)" }}>
         <div className="flex items-center gap-3 mb-4">
           <CheckCircle2 className="w-7 h-7 text-green-400" />
