@@ -35,7 +35,7 @@ export default function App() {
 
   const connectWallet = useCallback(async () => {
     // 钱包非必须——有就连，没有不报错
-    if (!window?.ethereum?.request) { setWalletError("未检测到钱包，上传功能不受影响"); return; }
+    if (!window?.ethereum?.request) { setWalletError("未检测到钱包，上传功能不受影响。建议安装 MetaMask"); return; }
     try {
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       if (accounts.length > 0) { setAccount(accounts[0]); addToast("success", "钱包已连接"); }
