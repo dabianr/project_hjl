@@ -28,7 +28,7 @@ export default function Toast({ type = "info", message, onClose }) {
 
   return (
     <div onClick={() => setLeaving(true)}
-      className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-xl text-sm shadow-lg cursor-pointer transition-all duration-300 ${
+      className={`fixed top-20 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-xl text-sm shadow-lg cursor-pointer transition-all duration-300 ${
         leaving ? "opacity-0 translate-x-8" : "opacity-100"
       }`}
       style={{ background: c.bg, border: `1px solid ${c.border}`, maxWidth: 360 }}>

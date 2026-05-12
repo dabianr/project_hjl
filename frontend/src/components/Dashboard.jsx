@@ -8,7 +8,7 @@ function StatCard({ icon: Icon, label, value }) {
       <div className="icon-box"><Icon className="w-6 h-6" style={{ color: "#06d6d6" }} /></div>
       <div>
         <p className="text-gray-500 text-xs font-medium tracking-wider uppercase mb-1">{label}</p>
-        <p className="text-3xl font-bold text-white">{typeof value === "number" ? value.toLocaleString() : value}</p>
+        <p className="text-3xl font-bold dark:text-white text-gray-900">{typeof value === "number" ? value.toLocaleString() : value}</p>
       </div>
     </div>
   );
@@ -17,7 +17,7 @@ function StatCard({ icon: Icon, label, value }) {
 export default function Dashboard({ stats, loading }) {
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-400 mb-4">数据概览</h2>
+      <h2 className="text-lg font-semibold dark:text-gray-400 text-gray-500 mb-4">数据概览</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {loading
           ? [1, 2, 3, 4].map((i) => (

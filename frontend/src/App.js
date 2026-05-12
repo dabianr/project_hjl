@@ -35,7 +35,7 @@ export default function App() {
 
   const connectWallet = useCallback(async () => {
     setWalletError(null);
-    if (!window.ethereum) { addToast("error", "请安装 MetaMask 或 Rabby"); return; }
+    if (!window.ethereum) { addToast("error", "请安装浏览器钱包（Rabby / MetaMask）"); return; }
     try {
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       if (accounts.length > 0) { setAccount(accounts[0]); addToast("success", "钱包已连接"); }
@@ -71,7 +71,7 @@ export default function App() {
   const border = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
 
   return (
-    <div className="min-h-screen transition-colors" style={{ background: bg, color: text }}>
+    <div className={"min-h-screen transition-colors " + (isDark ? "dark" : "")} style={{ background: bg, color: text }}>
       <Navbar account={account} onConnect={connectWallet} onDisconnect={disconnectWallet} walletError={walletError} theme={theme} onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <ErrorBoundary><Dashboard stats={stats} loading={loading} /></ErrorBoundary>

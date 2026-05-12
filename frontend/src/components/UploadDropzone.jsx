@@ -116,7 +116,7 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
                    style={{ background: isDragActive ? "rgba(139,92,246,0.15)" : "rgba(255,255,255,0.03)" }}>
                 <UploadCloud className="w-9 h-9" style={{ color: isDragActive ? "#8b5cf6" : "#6b7280" }} />
               </div>
-              <p className="text-gray-300 text-base font-medium mb-1">
+              <p className="dark:text-gray-300 text-gray-600 text-base font-medium mb-1">
                 {isDragActive ? "松开以添加文件" : "拖拽文件到此处（支持多文件）"}
               </p>
               <p className="text-gray-600 text-sm">或点击选择 · 最大 50MB/文件 · 最多 20 个</p>
@@ -124,7 +124,7 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
           ) : (
             <div className="w-full max-w-2xl space-y-2">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-gray-400 text-sm">
+                <span className="dark:text-gray-400 text-gray-500 text-sm">
                   {files.length} 个文件 {files.length > 1 ? "(批量模式)" : "(单文件模式)"}
                 </span>
                 {!uploading && files.length > 0 && (
@@ -140,7 +140,7 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
                   style={{ background: "rgba(255,255,255,0.03)" }}>
                   <File className="w-6 h-6 shrink-0" style={{ color: "#06d6d6" }} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm truncate">{f.name}</p>
+                    <p className="dark:text-white text-gray-900 text-sm truncate">{f.name}</p>
                     <p className="text-gray-500 text-xs">{(f.size / 1024).toFixed(1)} KB</p>
                   </div>
                   {!uploading && (
@@ -161,7 +161,7 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
         <div className="flex flex-col items-center gap-4">
           {uploading && (
             <div className="w-full max-w-md space-y-2">
-              <div className="flex justify-between text-xs text-gray-400">
+              <div className="flex justify-between text-xs dark:text-gray-400 text-gray-500">
                 <span>{files.length > 1 ? "批量上传中..." : "正在上传 & 计算哈希..."}</span>
                 <span>{Math.round(progress)}%</span>
               </div>
@@ -224,7 +224,7 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
                     ) : (
                       <AlertCircle className="w-4 h-4 text-red-400" />
                     )}
-                    <span className="text-sm font-medium text-gray-200 truncate">{r.file_name}</span>
+                    <span className="text-sm font-medium dark:text-gray-200 text-gray-700 truncate">{r.file_name}</span>
                   </div>
                   {r.success ? (
                     <div className="text-xs text-gray-500 font-mono ml-6 space-y-0.5">
@@ -266,7 +266,7 @@ function ResultCard({ result, onReset }) {
           ].map((item) => (
             <div key={item.label} className="p-3 rounded-lg" style={{ background: "rgba(255,255,255,0.03)" }}>
               <p className="text-gray-500 text-xs mb-1">{item.label}</p>
-              <p className="text-gray-200 font-mono break-all text-xs">{item.value}</p>
+              <p className="dark:text-gray-200 text-gray-700 font-mono break-all text-xs">{item.value}</p>
             </div>
           ))}
         </div>

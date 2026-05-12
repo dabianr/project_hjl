@@ -15,7 +15,7 @@ export default function EvidenceList({ logs, onRefresh }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-400">最近存证记录</h2>
+        <h2 className="text-lg font-semibold dark:text-gray-400 text-gray-500">最近存证记录</h2>
         <button onClick={onRefresh} className="btn-secondary text-xs">刷新</button>
       </div>
       <div className="space-y-3">
@@ -23,7 +23,7 @@ export default function EvidenceList({ logs, onRefresh }) {
           <div key={log.id} className="card-glow p-5">
             <div className="flex items-start justify-between mb-3">
               <div>
-                <p className="text-white font-medium">{log.file_name}</p>
+                <p className="dark:text-white text-gray-900 font-medium">{log.file_name}</p>
                 <p className="text-gray-600 text-xs mt-0.5">
                   {log.created_at ? new Date(log.created_at).toLocaleString() : ""}
                 </p>
@@ -36,15 +36,15 @@ export default function EvidenceList({ logs, onRefresh }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
               <div>
                 <span className="text-gray-600">哈希: </span>
-                <span className="text-gray-400 font-mono break-all">{log.file_hash}</span>
+                <span className="dark:text-gray-400 text-gray-500 font-mono break-all">{log.file_hash}</span>
               </div>
               <div>
                 <span className="text-gray-600">IPFS: </span>
-                <span className="text-gray-400 font-mono break-all">{log.ipfs_cid}</span>
+                <span className="dark:text-gray-400 text-gray-500 font-mono break-all">{log.ipfs_cid}</span>
               </div>
               <div className="sm:col-span-2">
                 <span className="text-gray-600">交易: </span>
-                <span className="text-gray-400 font-mono break-all">{log.tx_hash}</span>
+                <span className="dark:text-gray-400 text-gray-500 font-mono break-all">{log.tx_hash}</span>
               </div>
             </div>
           </div>

@@ -33,7 +33,7 @@ export default function VerifyTool({ apiBase }) {
             onChange={(e) => setHash(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleVerify()}
             placeholder="粘贴文件哈希值 (SM3 / SHA-256)..."
-            className="flex-1 px-4 py-3 rounded-xl text-sm font-mono text-white border border-gray-700 outline-none transition-all focus:border-violet-500"
+            className="flex-1 px-4 py-3 rounded-xl text-sm font-mono dark:text-white text-gray-900 border border-gray-700 outline-none transition-all focus:border-violet-500"
             style={{ background: "rgba(255,255,255,0.03)" }}
           />
           <button
@@ -79,7 +79,7 @@ export default function VerifyTool({ apiBase }) {
                 ].map((item) => (
                   <div key={item.label} className="p-3 rounded-lg" style={{ background: "rgba(255,255,255,0.03)" }}>
                     <p className="text-gray-500 text-xs mb-1">{item.label}</p>
-                    <p className="text-gray-200 font-mono break-all text-xs">{item.value}</p>
+                    <p className="dark:text-gray-200 text-gray-700 font-mono break-all text-xs">{item.value}</p>
                   </div>
                 ))}
               </div>
