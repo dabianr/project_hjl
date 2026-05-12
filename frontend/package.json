@@ -8,7 +8,8 @@
     "react-scripts": "5.0.1",
     "react-dropzone": "^14.3.5",
     "lucide-react": "^0.468.0",
-    "axios": "^1.7.9"
+    "axios": "^1.7.9",
+    "echarts": "^5.5.0"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.17",
@@ -20,7 +21,15 @@
     "build": "react-scripts build"
   },
   "browserslist": {
-    "production": [">0.2%", "not dead", "not op_mini all"],
-    "development": ["last 1 chrome version", "last 1 firefox version", "last 1 safari version"]
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }

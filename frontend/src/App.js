@@ -14,7 +14,7 @@ const POLL_INTERVAL = parseInt(process.env.REACT_APP_POLL_INTERVAL || "15000", 1
 
 export default function App() {
   const [account, setAccount] = useState(null);
-  const [stats, setStats] = useState({ total_evidence_count: 0, current_block_height: 0, your_evidence_count: 0, contract_paused: false });
+  const [stats, setStats] = useState({ total_evidence_count: 0, current_block_height: 0, your_evidence_count: 0, contract_paused: false, trend: [] });
   const [activeTab, setActiveTab] = useState("upload");
   const [logs, setLogs] = useState([]);
   const [walletError, setWalletError] = useState(null);
@@ -57,9 +57,13 @@ export default function App() {
     try {
       // 限制钱包弹窗10秒没反应就超时
       const controller = new AbortController();
-      setTimeout(() => controller.abort(), 10000); const { data } = await axios.get(`${API_BASE}/stats`, { params: account ? { uploader: account } : {} }); setStats(data); } catch (err) {}
+      setTimeout(() => controller.abort(), 10000); const { data } = await axios.get(`${API_BASE}/stats`, { params: account ? { uploader: account } : {} }); setStats(prev => ({ ...prev, ...data })); } catch (err) {}
     finally { setLoading(false); }
   }, [account]);
+
+  const fetchTrend = useCallback(async () => {
+    try { const { data } = await axios.get(`${API_BASE}/trend`, { params: { days: 7 } }); setStats(prev => ({ ...prev, trend: data.data || [] })); } catch (err) {}
+  }, []);
 
   const fetchLogs = useCallback(async () => {
     try {
@@ -68,8 +72,8 @@ export default function App() {
       setTimeout(() => controller.abort(), 10000); const { data } = await axios.get(`${API_BASE}/logs`, { params: { limit: 10 } }); setLogs(data.logs || []); } catch (err) {}
   }, []);
 
-  useEffect(() => { fetchStats(); fetchLogs(); const i = setInterval(fetchStats, POLL_INTERVAL); return () => clearInterval(i); }, [fetchStats, fetchLogs]);
-  const onUploadSuccess = () => { fetchStats(); fetchLogs(); addToast("success", "存证已提交到区块链"); };
+  useEffect(() => { fetchStats(); fetchLogs(); fetchTrend(); const i = setInterval(() => { fetchStats(); fetchTrend(); }, POLL_INTERVAL); return () => clearInterval(i); }, [fetchStats, fetchLogs]);
+  const onUploadSuccess = () => { fetchStats(); fetchLogs(); fetchTrend(); addToast("success", "存证已提交到区块链"); };
 
   const isDark = theme === "dark";
   const bg = isDark ? "#0d0d15" : "#f5f5f5";

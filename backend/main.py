@@ -21,6 +21,7 @@ from gmssl import sm3
 from config import settings
 from database import init_db
 from models import (
+    TrendResponse,
     UploadResponse, BatchUploadResponse, BatchItemResult,
     VerifyResponse, EvidenceDetail, StatsResponse, ErrorResponse,
 )
@@ -245,6 +246,19 @@ async def get_evidence_detail(file_hash: str):
 async def get_stats(uploader: Optional[str] = Query(None)):
     """合约统计"""
     return StatsResponse(**await get_contract_stats(uploader or ""))
+
+
+@app.get("/trend", response_model=TrendResponse)
+async def get_trend(days: int = 7, db: aiosqlite.Connection = Depends(get_db)):
+    """最近 N 天存证趋势，给前端折线图用"""
+    cursor = await db.execute(
+        "SELECT DATE(created_at) as date, COUNT(*) as count FROM operation_logs "
+        "WHERE created_at >= DATE('now', ?) GROUP BY date ORDER BY date",
+        (f"-{days} days",),
+    )
+    rows = await cursor.fetchall()
+    data = [{"date": r["date"], "count": r["count"]} for r in rows]
+    return TrendResponse(data=data)
 
 
 @app.get("/logs")

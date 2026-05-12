@@ -58,3 +58,10 @@ class StatsResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str
+
+class TrendItem(BaseModel):
+    date: str
+    count: int
+
+class TrendResponse(BaseModel):
+    data: List[TrendItem]
