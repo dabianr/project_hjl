@@ -4,13 +4,18 @@
 DIR="$(cd "$(dirname "$0")" && pwd)"
 GREEN='\033[0;32m'; RED='\033[0;31m'; CYAN='\033[0;36m'; NC='\033[0m'
 log(){ echo -e "${GREEN}[✓]${NC} $1"; }
-err(){ echo -e "${RED}[✗]${NC} $1"; exit 1; }
+warn(){ echo -e "${RED}[✗]${NC} $1"; }
+die(){ echo -e "${RED}[✗]${NC} $1"; exit 1; }
 
 # 配置
 STATE_DIR="$DIR/.anvil"
 ADDR_FILE="$STATE_DIR/contract_addr"
 BACKEND_PORT=8001
-mkdir -p "$STATE_DIR"
+LOG_DIR="$DIR/.logs"
+mkdir -p "$STATE_DIR" "$LOG_DIR"
+
+# 清理旧日志，避免权限冲突
+rm -f "$LOG_DIR"/anvil.log "$LOG_DIR"/backend.log "$LOG_DIR"/frontend.log
 
 # anvil：优先直接用，没有就走 nix-shell
 if command -v anvil &>/dev/null; then
@@ -35,7 +40,7 @@ else
     SKIP_DEPLOY=0
 fi
 
-$ANVIL_CMD --state "$STATE_DIR" --state-interval 30 --host 127.0.0.1 --port 8545 > /tmp/anvil.log 2>&1 &
+$ANVIL_CMD --state "$STATE_DIR" --state-interval 30 --host 127.0.0.1 --port 8545 > "$LOG_DIR/anvil.log" 2>&1 &
 ANVIL_PID=$!
 sleep 2
 
@@ -57,7 +62,7 @@ else
     log "部署合约..."
     OUT=$(npx hardhat run contracts/deploy.js --network localhost 2>&1)
     ADDR=$(echo "$OUT" | grep -oP '0x[a-fA-F0-9]{40}' | tail -1)
-    if [ -z "$ADDR" ]; then err "部署失败: $OUT"; fi
+    if [ -z "$ADDR" ]; then die "部署失败: $OUT"; fi
     echo "$ADDR" > "$ADDR_FILE"
     log "新合约: $ADDR"
 fi
@@ -82,23 +87,36 @@ log ".env 已生成"
 [ -d venv ] || { python3 -m venv venv; source venv/bin/activate; pip install -q -r requirements.txt; }
 fuser -k $BACKEND_PORT/tcp 2>/dev/null || true
 source venv/bin/activate
-nohup python3 -m uvicorn main:app --host 127.0.0.1 --port $BACKEND_PORT > /tmp/backend.log 2>&1 &
+nohup python3 -m uvicorn main:app --host 127.0.0.1 --port $BACKEND_PORT > "$LOG_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
-sleep 2
-curl -s http://127.0.0.1:$BACKEND_PORT/ > /dev/null && log "后端: http://127.0.0.1:$BACKEND_PORT" || { err "后端启动失败，查看 /tmp/backend.log"; }
+log "等后端就绪..."
+for i in $(seq 1 8); do
+    sleep 1
+    curl -s http://127.0.0.1:$BACKEND_PORT/ > /dev/null 2>&1 && break
+done
+curl -s http://127.0.0.1:$BACKEND_PORT/ > /dev/null 2>&1 \
+    && log "后端: http://127.0.0.1:$BACKEND_PORT" \
+    || warn "后端可能还在启动，查看 $LOG_DIR/backend.log"
 
 # 6. 前端
 cd "$DIR/frontend"
 fuser -k 3000/tcp 2>/dev/null || true
-nohup npm start > /tmp/frontend.log 2>&1 &
+nohup npm start > "$LOG_DIR/frontend.log" 2>&1 &
 FRONTEND_PID=$!
-sleep 4
-curl -s http://localhost:3000 > /dev/null && log "前端: http://localhost:3000" || err "前端启动失败，查看 /tmp/frontend.log"
+log "等前端就绪..."
+for i in $(seq 1 12); do
+    sleep 1
+    curl -s http://localhost:3000 > /dev/null 2>&1 && break
+done
+curl -s http://localhost:3000 > /dev/null 2>&1 \
+    && log "前端: http://localhost:3000" \
+    || warn "前端可能还在编译，查看 $LOG_DIR/frontend.log"
 
 # 保存 PID
-echo "$ANVIL_PID $BACKEND_PID $FRONTEND_PID" > /tmp/blockproof_pids.txt
+echo "$ANVIL_PID $BACKEND_PID $FRONTEND_PID" > "$LOG_DIR/pids.txt"
 
 echo ""
 echo -e "${GREEN}启动完成！${NC}"
 echo "  链状态每 30 秒自动存盘 → $STATE_DIR"
+echo "  日志目录 → $LOG_DIR"
 echo "  重启后数据不丢，兄弟放心"
