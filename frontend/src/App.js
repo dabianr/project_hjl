@@ -9,7 +9,7 @@ import VerifyTool from "./components/VerifyTool";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Toast from "./components/Toast";
 
-const API_BASE = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+const API_BASE = process.env.REACT_APP_API_URL || "http://127.0.0.1:8001";
 const POLL_INTERVAL = parseInt(process.env.REACT_APP_POLL_INTERVAL || "15000", 10);
 
 export default function App() {
