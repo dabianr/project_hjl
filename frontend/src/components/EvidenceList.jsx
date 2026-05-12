@@ -22,8 +22,22 @@ function formatRelativeTime(dateStr) {
 function CopyBtn({ text }) {
   const [copied, setCopied] = useState(false);
   const handle = async () => {
+    // clipboard API（需要安全上下文）
     try {
       await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      return;
+    } catch {}
+    // fallback：临时 textarea + execCommand
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {}

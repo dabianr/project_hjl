@@ -1,4 +1,4 @@
-// 拖拽上传组件，支持单文件和多文件批量上传 + 文件类型图标 + 状态覆盖
+// 拖拽上传组件 — 真实 onUploadProgress 进度 + 60s 超时
 import React, { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import axios from "axios";
@@ -31,7 +31,6 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
   const [batchResult, setBatchResult] = useState(null);
   const [error, setError] = useState(null);
   const [singleResult, setSingleResult] = useState(null);
-  // 每个文件的上传状态: null / "success" / "error"
   const [fileStatus, setFileStatus] = useState({});
 
   const onDrop = useCallback((accepted) => {
@@ -43,74 +42,74 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
     setFileStatus({});
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    maxFiles: 20,
-    multiple: true,
-  });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, maxFiles: 20, multiple: true });
 
   const removeFile = (id) => {
     setFiles((prev) => prev.filter((f) => f.id !== id));
-    setSingleResult(null);
-    setBatchResult(null);
-    setError(null);
+    setSingleResult(null); setBatchResult(null); setError(null);
   };
 
   const clearAll = () => {
-    setFiles([]);
-    setSingleResult(null);
-    setBatchResult(null);
-    setError(null);
-    setFileStatus({});
+    setFiles([]); setSingleResult(null); setBatchResult(null); setError(null); setFileStatus({});
   };
 
-  // 单文件上传
-  const handleSingleUpload = async () => {
-    if (files.length !== 1) return;
-    const formData = new FormData();
-    formData.append("file", files[0]);
-
+  // 通用上传逻辑：真实进度 onUploadProgress + 60s 超时
+  const doUpload = async (url, formData, fileIdMap) => {
     setUploading(true);
-    setProgress(10);
-    const timer = setInterval(() => setProgress((p) => (p >= 90 ? 90 : p + Math.random() * 15)), 400);
-
+    setProgress(0);
     try {
-      const { data } = await axios.post(`${apiBase}/upload`, formData, {
+      const { data } = await axios.post(url, formData, {
         headers: { "Content-Type": "multipart/form-data" },
+        timeout: 120000,          // 120s 总超时
+        onUploadProgress: (e) => {
+          if (e.total) setProgress(Math.round((e.loaded / e.total) * 100));
+        },
       });
-      clearInterval(timer);
       setProgress(100);
-      setSingleResult(data);
-      setFileStatus({ [files[0].id]: "success" });
-      onSuccess && onSuccess();
+      // 标记文件状态
+      if (fileIdMap) {
+        const status = {};
+        (data.results || []).forEach((r, i) => {
+          const f = fileIdMap[i];
+          if (f) status[f.id] = r.success ? "success" : "error";
+        });
+        setFileStatus(status);
+      } else if (fileIdMap === null) {
+        // 单文件
+        const key = Object.keys(fileIdMap || {})[0];
+        if (key) setFileStatus({ [key]: "success" });
+      }
+      return data;
     } catch (err) {
-      clearInterval(timer);
+      const msg = err.response?.data?.detail || err.message || "上传失败";
       setProgress(0);
-      setFileStatus({ [files[0].id]: "error" });
-      setError(err.response?.data?.detail || err.message || "上传失败");
+      setError(msg);
+      throw err;
     } finally {
       setUploading(false);
     }
   };
 
-  // 批量上传
+  const handleSingleUpload = async () => {
+    if (files.length !== 1) return;
+    const formData = new FormData();
+    formData.append("file", files[0]);
+    const idMap = { [files[0].id]: true };
+    try {
+      const data = await doUpload(`${apiBase}/upload`, formData, null);
+      setSingleResult(data);
+      setFileStatus({ [files[0].id]: "success" });
+      onSuccess && onSuccess();
+    } catch {}
+  };
+
   const handleBatchUpload = async () => {
     if (files.length === 0) return;
     const formData = new FormData();
     files.forEach((f) => formData.append("files", f));
-
-    setUploading(true);
-    setProgress(10);
-    const timer = setInterval(() => setProgress((p) => (p >= 90 ? 90 : p + Math.random() * 10)), 500);
-
     try {
-      const { data } = await axios.post(`${apiBase}/batch-upload`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      clearInterval(timer);
-      setProgress(100);
+      const data = await doUpload(`${apiBase}/batch-upload`, formData, files);
       setBatchResult(data);
-      // 标记每个文件状态
       const status = {};
       (data.results || []).forEach((r, i) => {
         const f = files[i];
@@ -118,21 +117,12 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
       });
       setFileStatus(status);
       onSuccess && onSuccess();
-    } catch (err) {
-      clearInterval(timer);
-      setProgress(0);
-      setError(err.response?.data?.detail || err.message || "批量上传失败");
-    } finally {
-      setUploading(false);
-    }
+    } catch {}
   };
 
   const handleUpload = () => {
-    if (files.length === 1) {
-      handleSingleUpload();
-    } else {
-      handleBatchUpload();
-    }
+    if (files.length === 1) handleSingleUpload();
+    else handleBatchUpload();
   };
 
   return (
@@ -160,9 +150,7 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
                 </span>
                 {!uploading && files.length > 0 && (
                   <button onClick={(e) => { e.stopPropagation(); clearAll(); }}
-                    className="text-xs text-gray-500 hover:text-red-400 transition-colors">
-                    清除全部
-                  </button>
+                    className="text-xs text-gray-500 hover:text-red-400 transition-colors">清除全部</button>
                 )}
               </div>
               {files.map((f) => {
@@ -170,9 +158,8 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
                 const Icon = getFileIcon(f.name);
                 const status = fileStatus[f.id];
                 return (
-                  <div key={f.id}
-                    className="flex items-center gap-3 p-3 rounded-lg relative"
-                    style={{ background: "rgba(255,255,255,0.03)" }}>
+                  <div key={f.id} className="flex items-center gap-3 p-3 rounded-lg relative"
+                       style={{ background: "rgba(255,255,255,0.03)" }}>
                     <Icon className="w-6 h-6 shrink-0" style={{ color: getIconColor(ext) }} />
                     <div className="flex-1 min-w-0">
                       <p className="dark:text-white text-gray-900 text-sm truncate">{f.name}</p>
@@ -204,7 +191,7 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
                 <span>{Math.round(progress)}%</span>
               </div>
               <div className="progress-bar">
-                <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
+                <div className="progress-bar-fill" style={{ width: `${Math.max(progress, 2)}%` }} />
               </div>
             </div>
           )}
@@ -228,10 +215,7 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
         </div>
       )}
 
-      {/* 单文件结果 */}
-      {singleResult && (
-        <ResultCard result={singleResult} onReset={clearAll} />
-      )}
+      {singleResult && <ResultCard result={singleResult} onReset={clearAll} />}
 
       {/* 批量结果 */}
       {batchResult && (
@@ -251,15 +235,10 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
             </div>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {batchResult.results.map((r, i) => (
-                <div key={i}
-                  className="p-3 rounded-lg fade-in"
-                  style={{ animationDelay: `${i * 0.05}s`, background: r.success ? "rgba(34,197,94,0.05)" : "rgba(239,68,68,0.05)" }}>
+                <div key={i} className="p-3 rounded-lg fade-in"
+                     style={{ animationDelay: `${i * 0.05}s`, background: r.success ? "rgba(34,197,94,0.05)" : "rgba(239,68,68,0.05)" }}>
                   <div className="flex items-center gap-2 mb-1">
-                    {r.success ? (
-                      <CheckCircle2 className="w-4 h-4 text-green-400" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 text-red-400" />
-                    )}
+                    {r.success ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : <AlertCircle className="w-4 h-4 text-red-400" />}
                     <span className="text-sm font-medium dark:text-gray-200 text-gray-700 truncate">{r.file_name}</span>
                   </div>
                   {r.success ? (
@@ -284,7 +263,6 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
   );
 }
 
-// 单文件成功结果卡片
 function ResultCard({ result, onReset }) {
   return (
     <div className="max-w-2xl mx-auto fade-in">
