@@ -24,6 +24,7 @@ from models import (
     UploadResponse, BatchUploadResponse, BatchItemResult,
     VerifyResponse, EvidenceDetail, StatsResponse, ErrorResponse,
 )
+from auth import require_auth
 from ipfs_service import upload_to_ipfs
 from blockchain_service import (
     upload_evidence_onchain, get_evidence_onchain,
@@ -158,6 +159,7 @@ async def upload_file(
     file: UploadFile = File(...),
     uploader: Optional[str] = Query(None),
     db: aiosqlite.Connection = Depends(get_db),
+    _auth=Depends(require_auth),
 ):
     """上传单个文件并存证"""
     result = await _process_single_file(file, uploader or "", db)
@@ -177,6 +179,7 @@ async def batch_upload_files(
     files: List[UploadFile] = File(...),
     uploader: Optional[str] = Query(None),
     db: aiosqlite.Connection = Depends(get_db),
+    _auth=Depends(require_auth),
 ):
     """
     批量上传多个文件并存证
@@ -249,6 +252,7 @@ async def get_operation_logs(
     limit: int = 50,
     offset: int = 0,
     db: aiosqlite.Connection = Depends(get_db),
+    _auth=Depends(require_auth),
 ):
     """操作日志分页"""
     cursor = await db.execute(
