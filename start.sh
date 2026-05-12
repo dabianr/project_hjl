@@ -51,7 +51,7 @@ log ".env 已生成"
 
 # 5. 后端
 [ -d venv ] || { python3 -m venv venv; source venv/bin/activate; pip install -q -r requirements.txt; }
-kill $(lsof -t -i:8000) 2>/dev/null || true
+fuser -k 8000/tcp 2>/dev/null || true
 source venv/bin/activate
 nohup python3 -m uvicorn main:app --host 127.0.0.1 --port 8000 > /tmp/backend.log 2>&1 &
 sleep 2
@@ -59,7 +59,7 @@ curl -s http://127.0.0.1:8000/ > /dev/null && log "后端: http://127.0.0.1:8000
 
 # 6. 前端
 cd "$DIR/frontend"
-kill $(lsof -t -i:3000) 2>/dev/null || true
+fuser -k 3000/tcp 2>/dev/null || true
 nohup npm start > /tmp/frontend.log 2>&1 &
 sleep 4
 curl -s http://localhost:3000 > /dev/null && log "前端: http://localhost:3000" || err "前端失败: tail /tmp/frontend.log"
