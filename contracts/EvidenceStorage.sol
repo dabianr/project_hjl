@@ -1,150 +1,91 @@
 // SPDX-License-Identifier: MIT
-// 铁子，这是存证合约本体
-// 文件哈希、IPFS CID、上传人地址全部锚定在链上
-// 改了什么：加了 OwnershipTransferred 事件，之前的 transferOwnership 偷偷摸摸改 owner
-// 前端想监听都听不到，现在 emit event 了，透明！
-// 另外注释全换成了人话
-
+// 存证合约 — 哈希+IPFS锚定在链上，不可篡改
 pragma solidity ^0.8.20;
 
 contract EvidenceStorage {
     struct Evidence {
-        string fileHash;    // 文件哈希，SM3 或 SHA-256，唯一索引
-        string fileName;    // 原始文件名
-        address uploader;   // 谁传的
-        uint256 timestamp;  // 区块时间戳
-        string ipfsCID;     // IPFS 内容标识
+        string fileHash;
+        string fileName;
+        address uploader;
+        uint256 timestamp;
+        string ipfsCID;
     }
 
     address public owner;
     bool public paused;
     uint256 public totalEvidenceCount;
 
-    // 哈希 → 存证记录
     mapping(string => Evidence) private _evidenceByHash;
-    // 地址 → 存证数量
     mapping(address => uint256) private _uploaderEvidenceCount;
-    // 所有哈希列表（注意：无限增长，以后得上 The Graph）
-    string[] private _allHashes;
 
-    // ── 事件 ──
+    // 最近存证的哈希列表，上限固定，用来快速浏览
+    // 完整历史通过链下扫 EvidenceCreated 事件获取
+    uint256 constant MAX_RECENT = 200;
+    string[MAX_RECENT] private _recentHashes;
+    uint256 private _recentCursor;
 
+    // ── 事件（链下扫事件比读数组更高效）──
     event EvidenceCreated(
-        string indexed fileHash,
-        string fileName,
-        address indexed uploader,
-        uint256 timestamp,
-        string ipfsCID
+        string indexed fileHash, string fileName,
+        address indexed uploader, uint256 timestamp, string ipfsCID
     );
-
     event ContractPaused(address indexed by);
     event ContractUnpaused(address indexed by);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    // 新增：所有权转移事件，之前缺这个，前端监听不了
-    event OwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
-    );
+    modifier onlyOwner() { require(msg.sender == owner, "Only owner"); _; }
+    modifier whenNotPaused() { require(!paused, "Contract paused"); _; }
 
-    // ── 权限控制 ──
-
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Only owner");
-        _;
-    }
-
-    modifier whenNotPaused() {
-        require(!paused, "Contract paused");
-        _;
-    }
-
-    constructor() {
-        owner = msg.sender;
-    }
-
-    // ── 核心功能 ──
+    constructor() { owner = msg.sender; }
 
     function uploadEvidence(
         string calldata fileHash,
         string calldata fileName,
         string calldata ipfsCID
     ) external whenNotPaused {
-        // 空哈希不行
         require(bytes(fileHash).length > 0, "Empty hash");
-        // 防重复存证，同一哈希只存一次
-        require(
-            bytes(_evidenceByHash[fileHash].fileHash).length == 0,
-            "Evidence already exists"
-        );
+        require(bytes(_evidenceByHash[fileHash].fileHash).length == 0, "Already exists");
 
-        _evidenceByHash[fileHash] = Evidence({
-            fileHash: fileHash,
-            fileName: fileName,
-            uploader: msg.sender,
-            timestamp: block.timestamp,
-            ipfsCID: ipfsCID
-        });
-
-        _allHashes.push(fileHash);
+        _evidenceByHash[fileHash] = Evidence(fileHash, fileName, msg.sender, block.timestamp, ipfsCID);
         totalEvidenceCount++;
         _uploaderEvidenceCount[msg.sender]++;
+
+        // 环形覆盖，只保留最近 MAX_RECENT 条
+        _recentHashes[_recentCursor % MAX_RECENT] = fileHash;
+        _recentCursor++;
 
         emit EvidenceCreated(fileHash, fileName, msg.sender, block.timestamp, ipfsCID);
     }
 
-    function getEvidence(
-        string calldata fileHash
-    ) external view returns (Evidence memory) {
+    function getEvidence(string calldata fileHash) external view returns (Evidence memory) {
         Evidence memory ev = _evidenceByHash[fileHash];
         require(bytes(ev.fileHash).length > 0, "Not found");
         return ev;
     }
 
-    function verifyEvidence(
-        string calldata fileHash
-    ) external view returns (bool, Evidence memory) {
+    function verifyEvidence(string calldata fileHash) external view returns (bool, Evidence memory) {
         Evidence memory ev = _evidenceByHash[fileHash];
-        if (bytes(ev.fileHash).length > 0) return (true, ev);
-        return (false, Evidence("", "", address(0), 0, ""));
+        return bytes(ev.fileHash).length > 0 ? (true, ev) : (false, Evidence("", "", address(0), 0, ""));
     }
 
     function getUploaderEvidenceCount(address uploader) external view returns (uint256) {
         return _uploaderEvidenceCount[uploader];
     }
 
-    function getAllEvidenceHashes(
-        uint256 offset,
-        uint256 limit
-    ) external view returns (string[] memory, uint256) {
-        uint256 len = _allHashes.length;
-        if (offset >= len) return (new string[](0), len);
-        uint256 end = offset + limit > len ? len : offset + limit;
-        string[] memory result = new string[](end - offset);
-        for (uint256 i = 0; i < result.length; i++) {
-            result[i] = _allHashes[offset + i];
-        }
-        return (result, len);
+    // 只返回最近 MAX_RECENT 条哈希，取代旧版无限数组
+    function getRecentHashes() external view returns (string[MAX_RECENT] memory, uint256 total) {
+        return (_recentHashes, _recentCursor < MAX_RECENT ? _recentCursor : MAX_RECENT);
     }
-
-    // ── 合约管理 ──
 
     function pause() external onlyOwner {
-        require(!paused, "Already paused");
-        paused = true;
-        emit ContractPaused(msg.sender);
+        require(!paused, "Already paused"); paused = true; emit ContractPaused(msg.sender);
     }
-
     function unpause() external onlyOwner {
-        require(paused, "Not paused");
-        paused = false;
-        emit ContractUnpaused(msg.sender);
+        require(paused, "Not paused"); paused = false; emit ContractUnpaused(msg.sender);
     }
-
     function transferOwnership(address newOwner) external onlyOwner {
-        require(newOwner != address(0), "Invalid address");
-        // 记录旧 owner，发事件，然后切
-        address previousOwner = owner;
-        owner = newOwner;
-        emit OwnershipTransferred(previousOwner, newOwner);
+        require(newOwner != address(0), "Invalid");
+        address prev = owner; owner = newOwner;
+        emit OwnershipTransferred(prev, newOwner);
     }
 }

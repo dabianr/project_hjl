@@ -17,7 +17,7 @@ _ABI_PATH = os.path.join(os.path.dirname(__file__), "..", "artifacts", "contract
 # 兜底 ABI，编译产物找不到时硬编码顶上
 _FALLBACK_ABI = json.loads("""[
     {"type":"constructor","inputs":[],"stateMutability":"nonpayable"},
-    {"type":"function","name":"getAllEvidenceHashes","inputs":[{"name":"offset","type":"uint256"},{"name":"limit","type":"uint256"}],"outputs":[{"name":"hashes","type":"string[]"},{"name":"total","type":"uint256"}],"stateMutability":"view"},
+    {"type":"function","name":"getRecentHashes","inputs":[{"name":"offset","type":"uint256"},{"name":"limit","type":"uint256"}],"outputs":[{"name":"hashes","type":"string[]"},{"name":"total","type":"uint256"}],"stateMutability":"view"},
     {"type":"function","name":"getEvidence","inputs":[{"name":"fileHash","type":"string"}],"outputs":[{"name":"","type":"tuple","components":[{"name":"fileHash","type":"string"},{"name":"fileName","type":"string"},{"name":"uploader","type":"address"},{"name":"timestamp","type":"uint256"},{"name":"ipfsCID","type":"string"}]}],"stateMutability":"view"},
     {"type":"function","name":"getUploaderEvidenceCount","inputs":[{"name":"uploader","type":"address"}],"outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"},
     {"type":"function","name":"owner","inputs":[],"outputs":[{"name":"","type":"address"}],"stateMutability":"view"},
