@@ -29,7 +29,7 @@ log "链已就绪"
 # 3. 部署合约
 log "部署合约..."
 OUT=$(npx hardhat run contracts/deploy.js --network localhost 2>&1)
-ADDR=$(echo "$OUT" | grep -oP '0x[a-fA-F0-9]{40}')
+ADDR=$(echo "$OUT" | grep -oP '0x[a-fA-F0-9]{40}' | tail -1)
 if [ -z "$ADDR" ]; then err "部署失败: $OUT"; exit 1; fi
 log "合约: $ADDR"
 
