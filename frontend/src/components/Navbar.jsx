@@ -35,7 +35,7 @@ export default function Navbar({ account, onConnect, onDisconnect, walletError, 
         <div className="max-w-7xl mx-auto px-6 mt-3">
           <div className="flex items-center gap-3 p-3 rounded-lg text-sm" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
             <AlertCircle className="w-4 h-4 text-red-400" /><span className="text-red-300">{walletError}</span>
-            <button onClick={() => window.open("https://chromewebstore.google.com/detail/njbggmfpkbaihmjpadknnkfhjfigpllh", "_blank")} className="ml-2 px-3 py-1 text-xs rounded-lg border border-red-500 text-red-300 hover:bg-red-500/10 transition-colors shrink-0">安装 MetaMask</button>
+            <button onClick={() => window.open("https://chromewebstore.google.com/detail/nkbihfbeogaeaoehlefnkodbefgpgknn", "_blank")} className="ml-2 px-3 py-1 text-xs rounded-lg border border-red-500 text-red-300 hover:bg-red-500/10 transition-colors shrink-0">安装 MetaMask</button>
           </div>
         </div>
       )}
