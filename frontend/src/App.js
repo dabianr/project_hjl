@@ -54,12 +54,18 @@ export default function App() {
   }, []);
 
   const fetchStats = useCallback(async () => {
-    try { const { data } = await axios.get(`${API_BASE}/stats`, { params: account ? { uploader: account } : {} }); setStats(data); } catch (err) {}
+    try {
+      // 限制钱包弹窗10秒没反应就超时
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 10000); const { data } = await axios.get(`${API_BASE}/stats`, { params: account ? { uploader: account } : {} }); setStats(data); } catch (err) {}
     finally { setLoading(false); }
   }, [account]);
 
   const fetchLogs = useCallback(async () => {
-    try { const { data } = await axios.get(`${API_BASE}/logs`, { params: { limit: 10 } }); setLogs(data.logs || []); } catch (err) {}
+    try {
+      // 限制钱包弹窗10秒没反应就超时
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 10000); const { data } = await axios.get(`${API_BASE}/logs`, { params: { limit: 10 } }); setLogs(data.logs || []); } catch (err) {}
   }, []);
 
   useEffect(() => { fetchStats(); fetchLogs(); const i = setInterval(fetchStats, POLL_INTERVAL); return () => clearInterval(i); }, [fetchStats, fetchLogs]);
