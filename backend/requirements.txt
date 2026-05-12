@@ -7,3 +7,4 @@ aiofiles==24.1.0
 aiosqlite==0.20.0
 slowapi==0.1.9
 python-dotenv==1.0.1
+pytest
