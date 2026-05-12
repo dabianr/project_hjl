@@ -1,4 +1,4 @@
-// 仪表盘 — 加载时骨架屏，就绪后四张统计卡片
+// 仪表盘 — 加载时骨架屏，就绪后四张统计卡片 + 趋势图
 import React from "react";
 import TrendChart from "./TrendChart";
 import { Database, Blocks, FileCheck, ShieldAlert } from "lucide-react";
@@ -10,8 +10,7 @@ function StatCard({ icon: Icon, label, value }) {
       <div>
         <p className="text-gray-500 text-xs font-medium tracking-wider uppercase mb-1">{label}</p>
         <p className="text-3xl font-bold dark:text-white text-gray-900">{typeof value === "number" ? value.toLocaleString() : value}</p>
-      
-      {!loading && <TrendChart data={stats.trend || []} />}
+      </div>
     </div>
   );
 }
@@ -40,7 +39,7 @@ export default function Dashboard({ stats, loading }) {
               <StatCard icon={ShieldAlert} label="合约状态" value={stats.contract_paused ? "已暂停" : "运行中"} />
             </>
         }
-      
+      </div>
       {!loading && <TrendChart data={stats.trend || []} />}
     </div>
   );
