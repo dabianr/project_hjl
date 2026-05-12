@@ -35,7 +35,7 @@ export default function App() {
 
   const connectWallet = useCallback(async () => {
     setWalletError(null);
-    if (!window.ethereum) { addToast("error", "请安装浏览器钱包（Rabby / MetaMask）"); return; }
+    if (!window.ethereum) { setWalletError("请安装浏览器钱包后刷新页面"); return; }
     try {
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       if (accounts.length > 0) { setAccount(accounts[0]); addToast("success", "钱包已连接"); }
