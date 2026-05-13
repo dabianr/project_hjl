@@ -41,7 +41,8 @@ function AnimatedValue({ target }) {
 function StatCard({ icon: Icon, label, value, colorKey }) {
   const c = COLORS[colorKey] || COLORS.purple;
   return (
-    <div className="card-glow card-hover p-6 flex items-start gap-4">
+    <div className="card-glow card-hover p-6 flex items-start gap-4"
+         style={{ background: c.bg }}>
       <div className="icon-box" style={{ background: c.bg }}>
         <Icon className="w-6 h-6" style={{ color: c.icon }} />
       </div>
