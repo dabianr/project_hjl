@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import axios from "axios";
-import { UploadCloud, File, FileText, Image, Archive, X, CheckCircle2, Loader2, ShieldCheck, AlertCircle, Layers, XCircle } from "lucide-react";
+import { UploadCloud, File, FileText, Image, Archive, X, CheckCircle2, Loader2, ShieldCheck, AlertCircle, Layers, XCircle, Copy as CopyIcon } from "lucide-react";
 
 function getFileIcon(name) {
   const ext = (name || "").split(".").pop()?.toLowerCase();
@@ -263,6 +263,24 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
   );
 }
 
+function CopyBtn({ text }) {
+  const [copied, setCopied] = React.useState(false);
+  const handle = async () => {
+    try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); return; } catch {}
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select(); document.execCommand("copy");
+      document.body.removeChild(ta); setCopied(true); setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+  return (
+    <button onClick={handle} className="ml-1.5 p-0.5 rounded hover:bg-gray-800 transition-colors inline-flex align-middle" title="复制">
+      {copied ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <CopyIcon className="w-3 h-3 text-gray-500 hover:text-gray-300" />}
+    </button>
+  );
+}
+
 function ResultCard({ result, onReset }) {
   return (
     <div className="max-w-2xl mx-auto fade-in">
@@ -276,11 +294,14 @@ function ResultCard({ result, onReset }) {
             { label: "文件哈希 (SM3/SHA-256)", value: result.file_hash },
             { label: "IPFS CID", value: result.ipfs_cid },
             { label: "交易哈希", value: result.tx_hash },
-            { label: "区块号", value: `#${result.block_number}` },
+            { label: "区块号", value: `#${result.block_number}`, copyValue: String(result.block_number) },
           ].map((item) => (
-            <div key={item.label} className="p-3 rounded-lg" style={{ background: "rgba(255,255,255,0.03)" }}>
-              <p className="text-gray-500 text-xs mb-1">{item.label}</p>
-              <p className="dark:text-gray-200 text-gray-700 font-mono break-all text-xs">{item.value}</p>
+            <div key={item.label} className="p-3 rounded-lg flex items-start justify-between" style={{ background: "rgba(255,255,255,0.03)" }}>
+              <div className="flex-1 min-w-0">
+                <p className="text-gray-500 text-xs mb-1">{item.label}</p>
+                <p className="dark:text-gray-200 text-gray-700 font-mono break-all text-xs">{item.value}</p>
+              </div>
+              <CopyBtn text={item.copyValue || item.value} />
             </div>
           ))}
         </div>

@@ -68,8 +68,9 @@ export default function EvidenceList({ logs, onRefresh }) {
         <button onClick={onRefresh} className="btn-secondary text-xs">刷新</button>
       </div>
       <div className="space-y-3">
-        {logs.map((log) => (
-          <div key={log.id} className="card-glow card-hover p-5">
+        {logs.map((log, idx) => (
+          <div key={log.id} className="card-glow card-hover p-5 fade-in"
+               style={{ animationDelay: `${idx * 0.05}s` }}>
             <div className="flex items-start justify-between mb-3">
               <div>
                 <p className="dark:text-white text-gray-900 font-medium">{log.file_name}</p>

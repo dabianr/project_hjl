@@ -25,6 +25,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState("dark");
   const [toasts, setToasts] = useState([]);
+  const [networkOk, setNetworkOk] = useState(null); // null=检查中
 
   const addToast = (type, message) => {
     setToasts((prev) => [...prev, { id: Date.now(), type, message }]);
@@ -66,8 +67,9 @@ export default function App() {
         params: account ? { uploader: account } : {},
       });
       setStats((prev) => ({ ...prev, ...data }));
+      setNetworkOk(true);
     } catch (err) {
-      // 后端没起时不报错
+      setNetworkOk(false);
     } finally {
       setLoading(false);
     }
@@ -116,13 +118,11 @@ export default function App() {
         <div className="flex gap-2 mt-10 mb-6">
           {tabs.map((tab) => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                activeTab === tab.key ? "text-white border shadow-lg" : "text-gray-500 hover:text-gray-300 border border-transparent"
+              className={`px-5 py-2.5 text-sm font-medium transition-all border-b-2 ${
+                activeTab === tab.key
+                  ? "text-white border-violet-500"
+                  : "text-gray-500 hover:text-gray-300 border-transparent"
               }`}
-              style={activeTab === tab.key ? {
-                background: "rgba(139,92,246,0.15)", borderColor: "rgba(139,92,246,0.3)",
-                boxShadow: "0 0 20px rgba(139,92,246,0.1)",
-              } : {}}
             >{tab.label}</button>
           ))}
         </div>
@@ -131,7 +131,16 @@ export default function App() {
         {activeTab === "verify" && <ErrorBoundary key="verify"><VerifyTool apiBase={API_BASE} /></ErrorBoundary>}
       </main>
       <footer className="py-6 mt-16" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>
-        <div className="text-center text-xs opacity-40">BlockProof — 区块链电子文件存证系统 | Ethereum + IPFS + SM3</div>
+        <div className="flex items-center justify-center gap-4 text-xs opacity-60">
+          <span className="flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full ${
+              networkOk === null ? "bg-yellow-500" :
+              networkOk ? "bg-green-500" : "bg-red-500"
+            }`} />
+            {networkOk === null ? "连接中..." : networkOk ? "区块链已连接" : "连接异常"}
+          </span>
+          <span>BlockProof — 区块链电子文件存证系统 | Ethereum + IPFS + SM3</span>
+        </div>
       </footer>
       {toasts.map((t) => <Toast key={t.id} type={t.type} message={t.message} onClose={() => removeToast(t.id)} />)}
     </div>

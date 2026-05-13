@@ -1,6 +1,7 @@
-// 存证柱状图 — ECharts
+// 存证柱状图 — ECharts + 空状态占位
 import React, { useEffect, useRef } from "react";
 import * as echarts from "echarts";
+import { BarChart3 } from "lucide-react";
 
 export default function TrendChart({ data = [] }) {
   const ref = useRef();
@@ -38,7 +39,15 @@ export default function TrendChart({ data = [] }) {
     return () => chart.dispose();
   }, [data]);
 
-  if (data.length === 0) return null;
+  if (data.length === 0) {
+    return (
+      <div className="card-glow mt-6 h-64 flex flex-col items-center justify-center">
+        <BarChart3 className="w-10 h-10 text-gray-600 mb-3" />
+        <p className="text-gray-500 text-sm">暂无趋势数据</p>
+        <p className="text-gray-600 text-xs mt-1">上传文件后将显示 7 天存证趋势</p>
+      </div>
+    );
+  }
 
   return <div ref={ref} className="w-full h-64 mt-6 rounded-xl" />;
 }

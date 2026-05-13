@@ -110,3 +110,20 @@ html { scroll-behavior: smooth; }
 .count-up {
   display: inline-block;
 }
+
+/* 错峰入场 */
+.stagger-enter {
+  opacity: 0;
+  transform: translateY(12px);
+}
+.stagger-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+}
+
+/* 浅色模式 card-glow 适配 */
+html:not(.dark) .card-glow {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(0, 0, 0, 0.08);
+}
