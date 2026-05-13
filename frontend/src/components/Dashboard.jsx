@@ -1,5 +1,5 @@
 // 仪表盘 — 加载时骨架屏，就绪后四张统计卡片 + 趋势图
-// 每张卡片不同强调色 + count-up 数字递增动画
+// 每张卡片不同强调色 + count-up 数字递增动画 + 错峰入场
 import React, { useState, useEffect, useRef } from "react";
 import TrendChart from "./TrendChart";
 import { Database, Blocks, FileCheck, ShieldAlert } from "lucide-react";
@@ -11,7 +11,7 @@ const COLORS = {
   orange: { icon: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
 };
 
-function AnimatedValue({ target, colorKey }) {
+function AnimatedValue({ target }) {
   const [val, setVal] = useState(0);
   const started = useRef(false);
 
@@ -48,14 +48,28 @@ function StatCard({ icon: Icon, label, value, colorKey }) {
       <div>
         <p className="text-gray-500 text-xs font-medium tracking-wider uppercase mb-1">{label}</p>
         <p className="text-3xl font-bold dark:text-white text-gray-900">
-          <AnimatedValue target={value} colorKey={colorKey} />
+          <AnimatedValue target={value} />
         </p>
       </div>
     </div>
   );
 }
 
+const CARD_DATA = [
+  { icon: Database,   label: "全网存证总数", key: "purple" },
+  { icon: Blocks,     label: "当前区块高度", key: "cyan" },
+  { icon: FileCheck,  label: "你的存证数量", key: "green" },
+  { icon: ShieldAlert, label: "合约状态",    key: "orange" },
+];
+
 export default function Dashboard({ stats, loading }) {
+  const values = [
+    stats.total_evidence_count,
+    stats.current_block_height,
+    stats.your_evidence_count,
+    stats.contract_paused ? "已暂停" : "运行中",
+  ];
+
   return (
     <div className="fade-in">
       <h2 className="text-lg font-semibold dark:text-gray-400 text-gray-500 mb-4">数据概览</h2>
@@ -72,14 +86,9 @@ export default function Dashboard({ stats, loading }) {
                 </div>
               </div>
             ))
-          : [
-              { icon: Database, label: "全网存证总数", value: stats.total_evidence_count, colorKey: "purple" },
-              { icon: Blocks, label: "当前区块高度", value: stats.current_block_height, colorKey: "cyan" },
-              { icon: FileCheck, label: "你的存证数量", value: stats.your_evidence_count, colorKey: "green" },
-              { icon: ShieldAlert, label: "合约状态", value: stats.contract_paused ? "已暂停" : "运行中", colorKey: "orange" },
-            ].map((card, idx) => (
-              <div key={card.label} className="fade-in" style={{ animationDelay: `${idx * 0.1}s` }}>
-                <StatCard icon={card.icon} label={card.label} value={card.value} colorKey={card.colorKey} />
+          : CARD_DATA.map((card, idx) => (
+              <div key={card.key} className="fade-in" style={{ animationDelay: (idx * 0.1) + "s" }}>
+                <StatCard icon={card.icon} label={card.label} value={values[idx]} colorKey={card.key} />
               </div>
             ))
         }
