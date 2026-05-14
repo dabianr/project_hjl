@@ -67,16 +67,7 @@ export default function App() {
     const dc = () => setAccount(null);
     window.ethereum.on("accountsChanged", ac);
     window.ethereum.on("disconnect", dc);
-    if (!hasDeviceId) {
-    return (
-      <PortalPage
-        onEnter={() => setHasDeviceId(true)}
-        onOpenAdmin={() => setShowLogin(true)}
-      />
-    );
-  }
-
-  return () => { window.ethereum.removeListener("accountsChanged", ac); window.ethereum.removeListener("disconnect", dc); };
+    return () => { window.ethereum.removeListener("accountsChanged", ac); window.ethereum.removeListener("disconnect", dc); };
   }, []);
 
   const fetchStats = useCallback(async () => {
@@ -111,16 +102,7 @@ export default function App() {
   useEffect(() => {
     fetchStats(); fetchLogs(); fetchTrend();
     const i = setInterval(() => { fetchStats(); fetchTrend(); }, POLL_INTERVAL);
-    if (!hasDeviceId) {
-    return (
-      <PortalPage
-        onEnter={() => setHasDeviceId(true)}
-        onOpenAdmin={() => setShowLogin(true)}
-      />
-    );
-  }
-
-  return () => clearInterval(i);
+    return () => clearInterval(i);
   }, []);
 
   const onUploadSuccess = () => {
