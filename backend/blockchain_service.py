@@ -114,7 +114,7 @@ async def get_contract_stats(uploader_address: str = "") -> dict:
     block_height = w3.eth.block_number
 
     your_count = 0
-    if uploader_address:
+    if uploader_address and Web3.is_address(uploader_address):
         your_count = contract.functions.getUploaderEvidenceCount(
             w3.to_checksum_address(uploader_address)
         ).call()
