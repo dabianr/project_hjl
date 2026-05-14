@@ -6,7 +6,9 @@ import Dashboard from "./components/Dashboard";
 import UploadDropzone from "./components/UploadDropzone";
 import EvidenceList from "./components/EvidenceList";
 import VerifyTool from "./components/VerifyTool";
-import AdminPanel from "./components/AdminPanel";
+import PortalPage from "./components/PortalPage";
+import AdminLogin from "./components/AdminLogin";
+import AdminConsole from "./components/AdminConsole";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Toast from "./components/Toast";
 
@@ -25,6 +27,9 @@ export default function App() {
   const [walletError, setWalletError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState("dark");
+  const [hasDeviceId, setHasDeviceId] = useState(!!localStorage.getItem("device_id"));
+  const [showLogin, setShowLogin] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [networkOk, setNetworkOk] = useState(null);
   const [logsLoading, setLogsLoading] = useState(false);
@@ -62,7 +67,16 @@ export default function App() {
     const dc = () => setAccount(null);
     window.ethereum.on("accountsChanged", ac);
     window.ethereum.on("disconnect", dc);
-    return () => { window.ethereum.removeListener("accountsChanged", ac); window.ethereum.removeListener("disconnect", dc); };
+    if (!hasDeviceId) {
+    return (
+      <PortalPage
+        onEnter={() => setHasDeviceId(true)}
+        onOpenAdmin={() => setShowLogin(true)}
+      />
+    );
+  }
+
+  return () => { window.ethereum.removeListener("accountsChanged", ac); window.ethereum.removeListener("disconnect", dc); };
   }, []);
 
   const fetchStats = useCallback(async () => {
@@ -97,7 +111,16 @@ export default function App() {
   useEffect(() => {
     fetchStats(); fetchLogs(); fetchTrend();
     const i = setInterval(() => { fetchStats(); fetchTrend(); }, POLL_INTERVAL);
-    return () => clearInterval(i);
+    if (!hasDeviceId) {
+    return (
+      <PortalPage
+        onEnter={() => setHasDeviceId(true)}
+        onOpenAdmin={() => setShowLogin(true)}
+      />
+    );
+  }
+
+  return () => clearInterval(i);
   }, []);
 
   const onUploadSuccess = () => {
@@ -110,13 +133,23 @@ export default function App() {
     { key: "upload", label: "上传存证" },
     { key: "list", label: "存证列表" },
     { key: "verify", label: "验证工具" },
-    { key: "admin", label: "管理面板" },
+
   ];
+
+  if (!hasDeviceId) {
+    return (
+      <PortalPage
+        onEnter={() => setHasDeviceId(true)}
+        onOpenAdmin={() => setShowLogin(true)}
+      />
+    );
+  }
 
   return (
     <div className={"min-h-screen transition-colors " + (isDark ? "dark" : "")}
          style={{ background: isDark ? "#0d0d15" : "#f5f5f5", color: isDark ? "#d1d5db" : "#374151" }}>
       <Navbar account={account} onConnect={connectWallet}
+              onOpenAdmin={() => setShowLogin(true)}
               onDisconnect={disconnectWallet} walletError={walletError}
               theme={theme} onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -135,7 +168,6 @@ export default function App() {
         {activeTab === "upload" && <ErrorBoundary key="upload"><UploadDropzone onSuccess={onUploadSuccess} apiBase={API_BASE} /></ErrorBoundary>}
         {activeTab === "list" && <ErrorBoundary key="list"><EvidenceList logs={logs} onRefresh={fetchLogs} apiBase={API_BASE} loading={logsLoading} /></ErrorBoundary>}
         {activeTab === "verify" && <ErrorBoundary key="verify"><VerifyTool apiBase={API_BASE} /></ErrorBoundary>}
-        {activeTab === "admin" && <ErrorBoundary key="admin"><AdminPanel apiBase={API_BASE} /></ErrorBoundary>}
       </main>
       <footer className="py-6 mt-16" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>
         <div className="flex items-center justify-center gap-4 text-xs opacity-60">
@@ -149,6 +181,16 @@ export default function App() {
           <span>BlockProof — 区块链电子文件存证系统 | Ethereum + IPFS + SM3</span>
         </div>
       </footer>
+      {showLogin && (
+        <AdminLogin
+          apiBase={API_BASE}
+          onSuccess={() => { setShowLogin(false); setShowAdmin(true); }}
+          onClose={() => setShowLogin(false)}
+        />
+      )}
+      {showAdmin && (
+        <AdminConsole apiBase={API_BASE} onClose={() => setShowAdmin(false)} />
+      )}
       {toasts.map((t) => <Toast key={t.id} type={t.type} message={t.message} onClose={() => removeToast(t.id)} />)}
     </div>
   );
