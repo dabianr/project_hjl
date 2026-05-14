@@ -108,7 +108,7 @@ export default function App() {
     fetchStats(id); fetchLogs(); fetchTrend();
     const i = setInterval(() => { fetchStats(id); fetchTrend(); }, POLL_INTERVAL);
     return () => clearInterval(i);
-  }, [account]);
+  }, [account, hasDeviceId]);
 
   const onUploadSuccess = () => {
     const id = account || deviceId;
