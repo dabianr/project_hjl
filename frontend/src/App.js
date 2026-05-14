@@ -86,26 +86,28 @@ export default function App() {
     } catch (err) {}
   }, []);
 
-  const pageRef = useRef(0);
-  const fetchLogs = useCallback(async (pageNum) => {
-    const p = pageNum !== undefined ? pageNum : pageRef.current;
+  const fetchLogs = useCallback(async (p) => {
     try {
       const { data } = await axios.get(`${API_BASE}/logs`, { params: { limit: PAGE_SIZE, offset: p * PAGE_SIZE } });
       setLogs(data.logs || []);
       setTotalLogs(data.total || 0);
-      if (pageNum !== undefined) { setPage(pageNum); pageRef.current = pageNum; }
     } catch (err) {}
-  }, []); // 不依赖 page，通过 pageRef 读取当前页
+  }, []);
+
+  // 页号变化时自动加载对应页
+  useEffect(() => {
+    fetchLogs(page);
+  }, [page, fetchLogs]);
 
   useEffect(() => {
-    fetchStats(); fetchLogs(0); fetchTrend();
+    fetchStats(); setPage(0); fetchTrend();
     const i = setInterval(() => { fetchStats(); fetchTrend(); }, POLL_INTERVAL);
     return () => clearInterval(i);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 只在挂载时执行一次，分页由用户点击触发
+  }, []);
 
   const onUploadSuccess = () => {
-    fetchStats(); fetchLogs(0); fetchTrend();
+    fetchStats(); setPage(0); fetchTrend();
     addToast("success", "存证已提交到区块链");
   };
 
@@ -136,7 +138,7 @@ export default function App() {
           ))}
         </div>
         {activeTab === "upload" && <ErrorBoundary key="upload"><UploadDropzone onSuccess={onUploadSuccess} apiBase={API_BASE} /></ErrorBoundary>}
-        {activeTab === "list" && <ErrorBoundary key="list"><EvidenceList logs={logs} onRefresh={fetchLogs} apiBase={API_BASE} page={page} totalLogs={totalLogs} pageSize={PAGE_SIZE} /></ErrorBoundary>}
+        {activeTab === "list" && <ErrorBoundary key="list"><EvidenceList logs={logs} onRefresh={() => fetchLogs(page)} onPageChange={setPage} apiBase={API_BASE} page={page} totalLogs={totalLogs} pageSize={PAGE_SIZE} /></ErrorBoundary>}
         {activeTab === "verify" && <ErrorBoundary key="verify"><VerifyTool apiBase={API_BASE} /></ErrorBoundary>}
       </main>
       <footer className="py-6 mt-16" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>

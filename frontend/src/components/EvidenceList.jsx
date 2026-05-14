@@ -39,7 +39,7 @@ function CopyBtn({ text }) {
 
 // 暗色卡片背景 — 在 index.css 中由 .evidence-card 定义
 
-export default function EvidenceList({ logs, onRefresh, page, totalLogs, pageSize }) {
+export default function EvidenceList({ logs, onRefresh, page, totalLogs, pageSize, onPageChange }) {
   const totalPages = Math.max(1, Math.ceil(totalLogs / (pageSize || 10)));
 
   if (!logs || logs.length === 0) {
@@ -97,14 +97,14 @@ export default function EvidenceList({ logs, onRefresh, page, totalLogs, pageSiz
       {/* 分页 */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 mt-6" style={{ color: "#9ca3af" }}>
-          <button onClick={() => onRefresh(page - 1)} disabled={page <= 0}
+          <button onClick={() => onPageChange(page - 1)} disabled={page <= 0}
             className="p-2 rounded-lg transition-colors disabled:opacity-30 hover:bg-gray-800">
             <ChevronLeft className="w-4 h-4" />
           </button>
           <span className="text-sm">
             {page + 1} / {totalPages}
           </span>
-          <button onClick={() => onRefresh(page + 1)} disabled={page >= totalPages - 1}
+          <button onClick={() => onPageChange(page + 1)} disabled={page >= totalPages - 1}
             className="p-2 rounded-lg transition-colors disabled:opacity-30 hover:bg-gray-800">
             <ChevronRight className="w-4 h-4" />
           </button>
