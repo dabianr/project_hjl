@@ -37,8 +37,7 @@ function CopyBtn({ text }) {
   );
 }
 
-const DARK_CARD = "rgba(30,30,50,0.6)";
-const DARK_BORDER = "rgba(255,255,255,0.06)";
+// 暗色卡片背景 — 在 index.css 中由 .evidence-card 定义
 
 export default function EvidenceList({ logs, onRefresh, page, totalLogs, pageSize }) {
   const totalPages = Math.max(1, Math.ceil(totalLogs / (pageSize || 10)));
@@ -63,13 +62,8 @@ export default function EvidenceList({ logs, onRefresh, page, totalLogs, pageSiz
       <div className="space-y-3">
         {logs.map((log, idx) => (
           <div key={log.id}
-               className="p-5 fade-in card-hover"
-               style={{
-                 background: DARK_CARD,
-                 border: `1px solid ${DARK_BORDER}`,
-                 borderRadius: "16px",
-                 animationDelay: `${idx * 0.05}s`,
-               }}>
+               className="evidence-card p-5 fade-in card-hover"
+               style={{ animationDelay: `${idx * 0.05}s` }}>
             <div className="flex items-start justify-between mb-3">
               <div>
                 <p className="dark:text-white text-gray-900 font-medium">{log.file_name}</p>
