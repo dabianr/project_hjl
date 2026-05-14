@@ -88,7 +88,7 @@ export default function App() {
     try {
       const { data } = await axios.get(`${API_BASE}/logs`, { params: { limit: PAGE_SIZE, offset: p * PAGE_SIZE } });
       setLogs(data.logs || []);
-      setTotalLogs(data.total || 0);
+      // setTotalLogs removed(data.total || 0);
     } catch (err) {}
   }, []);
 
