@@ -36,6 +36,7 @@ export default function App() {
   const removeToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id));
 
   useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
     document.body.style.background = theme === "dark" ? "#0d0d15" : "#f5f5f5";
   }, [theme]);
 
