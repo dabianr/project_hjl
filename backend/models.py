@@ -59,6 +59,11 @@ class StatsResponse(BaseModel):
 class ErrorResponse(BaseModel):
     detail: str
 
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 class TrendItem(BaseModel):
     date: str
     count: int

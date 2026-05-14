@@ -6,6 +6,8 @@ import uuid
 import time
 import logging
 import asyncio
+import datetime
+import jwt
 import aiosqlite
 from contextlib import asynccontextmanager
 from typing import Optional, List
@@ -23,10 +25,32 @@ from database import init_db
 from models import (
     TrendResponse,
     UploadResponse, BatchUploadResponse, BatchItemResult,
-    VerifyResponse, EvidenceDetail, StatsResponse, ErrorResponse,
+    VerifyResponse, EvidenceDetail, StatsResponse, ErrorResponse, LoginRequest,
 )
 from auth import require_auth
 from ipfs_service import upload_to_ipfs
+
+# JWT 配置
+JWT_SECRET = os.getenv("JWT_SECRET", "blockproof-local-jwt-secret-change-in-production")
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+security = HTTPBearer(auto_error=False)
+
+async def require_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """验证 JWT token"""
+    if credentials is None:
+        raise HTTPException(status_code=401, detail="需要管理员权限")
+    try:
+        payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=["HS256"])
+        if payload.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="不是管理员")
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token 已过期")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="无效的 Token")
 from blockchain_service import (
     upload_evidence_onchain, get_evidence_onchain,
     verify_evidence_onchain, get_contract_stats, get_contract,
@@ -262,7 +286,24 @@ async def get_trend(days: int = 7, db: aiosqlite.Connection = Depends(get_db)):
 
 
 
-# ===== 管理员面板 =====
+# ===== 管理员登录 =====
+
+@app.post("/admin/login")
+async def admin_login(req: LoginRequest):
+    """管理员登录，返回 JWT token"""
+    if req.username != ADMIN_USERNAME or req.password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+
+    token = jwt.encode({
+        "sub": req.username,
+        "role": "admin",
+        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=8),
+    }, JWT_SECRET, algorithm="HS256")
+
+    return {"access_token": token, "token_type": "bearer"}
+
+
+# ===== 管理员面板 ====
 
 @app.get("/admin/status")
 async def admin_status(db: aiosqlite.Connection = Depends(get_db), _auth=Depends(require_auth)):
