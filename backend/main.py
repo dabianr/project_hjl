@@ -405,7 +405,7 @@ async def admin_dashboard(db: aiosqlite.Connection = Depends(get_db), _auth=Depe
     
     heat = await db.execute(
         "SELECT DATE(created_at) as date, COUNT(*) as count FROM operation_logs "
-        "WHERE created_at >= DATE("now", "-6 days") GROUP BY date ORDER BY date"
+        "WHERE created_at >= DATE('now', '-6 days') GROUP BY date ORDER BY date"
     )
     heat_data = await heat.fetchall()
     
