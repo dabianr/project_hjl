@@ -318,7 +318,7 @@ async def admin_login(req: LoginRequest):
 # ===== 管理员面板 ====
 
 @app.get("/admin/status")
-async def admin_status(db: aiosqlite.Connection = Depends(get_db), _auth=Depends(require_auth)):
+async def admin_status(db: aiosqlite.Connection = Depends(get_db), _auth=Depends(require_admin)):
     """管理员面板 — 系统完整状态"""
     contract = get_contract()
     contract_paused = contract.functions.paused().call()
@@ -345,7 +345,7 @@ async def admin_status(db: aiosqlite.Connection = Depends(get_db), _auth=Depends
 
 
 @app.post("/admin/contract/pause")
-async def pause_contract(_auth=Depends(require_auth)):
+async def pause_contract(_auth=Depends(require_admin)):
     """暂停合约"""
     from blockchain_service import w3
     contract = get_contract()
@@ -363,7 +363,7 @@ async def pause_contract(_auth=Depends(require_auth)):
 
 
 @app.post("/admin/contract/unpause")
-async def unpause_contract(_auth=Depends(require_auth)):
+async def unpause_contract(_auth=Depends(require_admin)):
     """恢复合约"""
     from blockchain_service import w3
     contract = get_contract()
@@ -381,7 +381,7 @@ async def unpause_contract(_auth=Depends(require_auth)):
 
 
 @app.post("/admin/cleanup")
-async def cleanup_temp(_auth=Depends(require_auth)):
+async def cleanup_temp(_auth=Depends(require_admin)):
     """清理上传临时文件"""
     upload_dir = os.path.join(os.path.dirname(__file__), "uploads")
     count = 0
@@ -392,6 +392,27 @@ async def cleanup_temp(_auth=Depends(require_auth)):
                 os.remove(fp)
                 count += 1
     return {"success": True, "deleted_files": count}
+
+@app.get("/admin/dashboard")
+async def admin_dashboard(db: aiosqlite.Connection = Depends(get_db), _auth=Depends(require_admin)):
+    """聚合仪表盘数据：设备统计 + 热日历"""
+    from collections import Counter
+    
+    cursor = await db.execute("SELECT uploader FROM operation_logs")
+    rows = await cursor.fetchall()
+    uploaders = [r["uploader"] for r in rows if r["uploader"] and r["uploader"] != "anonymous"]
+    device_stats = dict(Counter(uploaders).most_common(5))
+    
+    heat = await db.execute(
+        "SELECT DATE(created_at) as date, COUNT(*) as count FROM operation_logs "
+        "WHERE created_at >= DATE("now", "-6 days") GROUP BY date ORDER BY date"
+    )
+    heat_data = await heat.fetchall()
+    
+    return {
+        "device_stats": device_stats,
+        "heatmap": [{"date": r["date"], "count": r["count"]} for r in heat_data],
+    }
 
 @app.get("/logs")
 async def get_operation_logs(
