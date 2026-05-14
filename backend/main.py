@@ -275,14 +275,16 @@ async def get_stats(
     """合约统计 + 个人存证数（支持钱包地址或 device_id）"""
     stats = await get_contract_stats(uploader or "")
     if uploader:
-        cursor = await db.execute(
-            "SELECT COUNT(DISTINCT tx_hash) FROM operation_logs WHERE uploader = ?",
-            (uploader,)
-        )
-        row = await cursor.fetchone()
-        if row and row[0]:
-            stats["your_evidence_count"] = row[0]
-        elif not Web3.is_address(uploader):
+        if Web3.is_address(uploader):
+            cursor = await db.execute(
+                "SELECT COUNT(DISTINCT tx_hash) FROM operation_logs WHERE uploader = ?",
+                (uploader,)
+            )
+            row = await cursor.fetchone()
+            if row and row[0]:
+                stats["your_evidence_count"] = row[0]
+        else:
+            # device_id 不是钱包地址，显示链上总数（兼容旧 anonymous 记录）
             stats["your_evidence_count"] = stats["total_evidence_count"]
     return StatsResponse(**stats)
 
@@ -404,7 +406,12 @@ async def admin_dashboard(db: aiosqlite.Connection = Depends(get_db), _auth=Depe
     cursor = await db.execute("SELECT uploader FROM operation_logs")
     rows = await cursor.fetchall()
     uploaders = [r["uploader"] for r in rows if r["uploader"] and r["uploader"] != "anonymous"]
-    device_stats = dict(Counter(uploaders).most_common(5))
+    # 钱包地址独立统计，device_id UUID 合并为"网页用户"
+    wallet_uploaders = [u for u in uploaders if Web3.is_address(u)]
+    web_uploaders = [u for u in uploaders if not Web3.is_address(u)]
+    device_stats = dict(Counter(wallet_uploaders).most_common(4))
+    if web_uploaders:
+        device_stats["网页用户"] = len(web_uploaders)
     
     heat = await db.execute(
         "SELECT DATE(created_at) as date, COUNT(*) as count FROM operation_logs "
