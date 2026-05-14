@@ -129,7 +129,7 @@ html:not(.dark) .card-glow {
 }
 /* 存证列表卡片 - 暗色比 card-glow 更深，浅色同 card-glow */
 .evidence-card {
-  background: rgba(30, 30, 50, 0.6);
+  background: #1a1a2e;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 16px;
   backdrop-filter: blur(12px);
@@ -140,6 +140,6 @@ html:not(.dark) .card-glow {
   box-shadow: 0 8px 30px rgba(0,0,0,0.15);
 }
 html:not(.dark) .evidence-card {
-  background: rgba(255, 255, 255, 0.7);
+  background: #f0f0f5;
   border-color: rgba(0, 0, 0, 0.08);
 }
