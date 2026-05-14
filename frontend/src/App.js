@@ -1,5 +1,5 @@
 // BlockProof 前端入口 — 主题/Toast/骨架屏/趋势图
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import Navbar from "./components/Navbar";
 import Dashboard from "./components/Dashboard";
@@ -86,21 +86,23 @@ export default function App() {
     } catch (err) {}
   }, []);
 
+  const pageRef = useRef(0);
   const fetchLogs = useCallback(async (pageNum) => {
-    const p = pageNum !== undefined ? pageNum : page;
+    const p = pageNum !== undefined ? pageNum : pageRef.current;
     try {
       const { data } = await axios.get(`${API_BASE}/logs`, { params: { limit: PAGE_SIZE, offset: p * PAGE_SIZE } });
       setLogs(data.logs || []);
       setTotalLogs(data.total || 0);
-      if (pageNum !== undefined) setPage(pageNum);
+      if (pageNum !== undefined) { setPage(pageNum); pageRef.current = pageNum; }
     } catch (err) {}
-  }, [page]);
+  }, []); // 不依赖 page，通过 pageRef 读取当前页
 
   useEffect(() => {
     fetchStats(); fetchLogs(0); fetchTrend();
     const i = setInterval(() => { fetchStats(); fetchTrend(); }, POLL_INTERVAL);
     return () => clearInterval(i);
-  }, [fetchStats, fetchLogs, fetchTrend]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 只在挂载时执行一次，分页由用户点击触发
 
   const onUploadSuccess = () => {
     fetchStats(); fetchLogs(0); fetchTrend();
