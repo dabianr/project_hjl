@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { FileText, Copy, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import axios from "axios";
+import { ListSkeleton } from "./Skeleton";
 
 function formatRelativeTime(dateStr) {
   if (!dateStr) return "";
@@ -40,7 +41,7 @@ function CopyBtn({ text }) {
 
 const PAGE_SIZE = 10;
 
-export default function EvidenceList({ logs: initialLogs, apiBase, onRefresh }) {
+export default function EvidenceList({ logs: initialLogs, apiBase, onRefresh, loading }) {
   // 本地管理当前页和数据
   const [page, setPage] = useState(0);
   const [items, setItems] = useState(initialLogs || []);
@@ -70,6 +71,18 @@ export default function EvidenceList({ logs: initialLogs, apiBase, onRefresh }) 
   };
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  if (loading) {
+    return (
+      <div className="fade-in">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold dark:text-gray-400 text-gray-500">最近存证记录</h2>
+          <div className="w-16 h-8 rounded-lg" style={{ background: "rgba(255,255,255,0.06)" }} />
+        </div>
+        <ListSkeleton rows={3} />
+      </div>
+    );
+  }
 
   if (!items || items.length === 0) {
     return (

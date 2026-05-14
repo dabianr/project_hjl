@@ -6,6 +6,7 @@ import Dashboard from "./components/Dashboard";
 import UploadDropzone from "./components/UploadDropzone";
 import EvidenceList from "./components/EvidenceList";
 import VerifyTool from "./components/VerifyTool";
+import AdminPanel from "./components/AdminPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Toast from "./components/Toast";
 
@@ -26,6 +27,7 @@ export default function App() {
   const [theme, setTheme] = useState("dark");
   const [toasts, setToasts] = useState([]);
   const [networkOk, setNetworkOk] = useState(null);
+  const [logsLoading, setLogsLoading] = useState(false);
 
 
   const addToast = (type, message) => {
@@ -108,6 +110,7 @@ export default function App() {
     { key: "upload", label: "上传存证" },
     { key: "list", label: "存证列表" },
     { key: "verify", label: "验证工具" },
+    { key: "admin", label: "管理面板" },
   ];
 
   return (
@@ -130,8 +133,9 @@ export default function App() {
           ))}
         </div>
         {activeTab === "upload" && <ErrorBoundary key="upload"><UploadDropzone onSuccess={onUploadSuccess} apiBase={API_BASE} /></ErrorBoundary>}
-        {activeTab === "list" && <ErrorBoundary key="list"><EvidenceList logs={logs} onRefresh={fetchLogs} apiBase={API_BASE} /></ErrorBoundary>}
+        {activeTab === "list" && <ErrorBoundary key="list"><EvidenceList logs={logs} onRefresh={fetchLogs} apiBase={API_BASE} loading={logsLoading} /></ErrorBoundary>}
         {activeTab === "verify" && <ErrorBoundary key="verify"><VerifyTool apiBase={API_BASE} /></ErrorBoundary>}
+        {activeTab === "admin" && <ErrorBoundary key="admin"><AdminPanel apiBase={API_BASE} /></ErrorBoundary>}
       </main>
       <footer className="py-6 mt-16" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>
         <div className="flex items-center justify-center gap-4 text-xs opacity-60">

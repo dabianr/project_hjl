@@ -14,7 +14,18 @@ export default function Navbar({ account, onConnect, onDisconnect, walletError, 
             <span className="dark:text-white text-gray-900 font-bold text-lg">BlockProof</span>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={onToggleTheme} className="p-2 rounded-lg hover:bg-gray-800 dark:text-gray-400 text-gray-500 transition-colors"
+            {/* API_KEY 状态 */}
+          <div className="flex items-center gap-1.5 px-2"
+               title={localStorage.getItem("api_key") ? "API_KEY 已配置" : "未配置 API_KEY"}>
+            <svg className="w-4 h-4" style={{ color: localStorage.getItem("api_key") ? "#10b981" : "#6b7280" }}
+                 fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              {localStorage.getItem("api_key")
+                ? <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                : <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              }
+            </svg>
+          </div>
+          <button onClick={onToggleTheme} className="p-2 rounded-lg hover:bg-gray-800 dark:text-gray-400 text-gray-500 transition-colors"
               title={theme === "dark" ? "切换浅色" : "切换深色"}>
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
