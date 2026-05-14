@@ -29,7 +29,7 @@ from auth import require_auth
 from ipfs_service import upload_to_ipfs
 from blockchain_service import (
     upload_evidence_onchain, get_evidence_onchain,
-    verify_evidence_onchain, get_contract_stats,
+    verify_evidence_onchain, get_contract_stats, get_contract,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -260,6 +260,85 @@ async def get_trend(days: int = 7, db: aiosqlite.Connection = Depends(get_db)):
     data = [{"date": r["date"], "count": r["count"]} for r in rows]
     return TrendResponse(data=data)
 
+
+
+# ===== 管理员面板 =====
+
+@app.get("/admin/status")
+async def admin_status(db: aiosqlite.Connection = Depends(get_db), _auth=Depends(require_auth)):
+    """管理员面板 — 系统完整状态"""
+    contract = get_contract()
+    contract_paused = contract.functions.paused().call()
+    owner = contract.functions.owner().call()
+    total = contract.functions.totalEvidenceCount().call()
+
+    count_cursor = await db.execute("SELECT COUNT(*) FROM operation_logs")
+    total_row = await count_cursor.fetchone()
+    db_count = total_row[0] if total_row else 0
+
+    upload_dir = os.path.join(os.path.dirname(__file__), "uploads")
+    temp_files = 0
+    if os.path.exists(upload_dir):
+        temp_files = len([f for f in os.listdir(upload_dir) if os.path.isfile(os.path.join(upload_dir, f))])
+
+    return {
+        "contract_paused": contract_paused,
+        "contract_owner": owner,
+        "total_evidence_onchain": total,
+        "total_logs_in_db": db_count,
+        "temp_upload_files": temp_files,
+        "network": settings.RPC_URL,
+    }
+
+
+@app.post("/admin/contract/pause")
+async def pause_contract(_auth=Depends(require_auth)):
+    """暂停合约"""
+    from blockchain_service import w3
+    contract = get_contract()
+    tx = contract.functions.pause().build_transaction({
+        "from": w3.eth.account.from_key(settings.PRIVATE_KEY).address,
+        "nonce": w3.eth.get_transaction_count(w3.eth.account.from_key(settings.PRIVATE_KEY).address),
+        "gas": 200000,
+        "gasPrice": w3.eth.gas_price,
+        "chainId": settings.CHAIN_ID,
+    })
+    signed = w3.eth.account.sign_transaction(tx, settings.PRIVATE_KEY)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    return {"success": True, "tx_hash": tx_hash.hex(), "block": receipt["blockNumber"]}
+
+
+@app.post("/admin/contract/unpause")
+async def unpause_contract(_auth=Depends(require_auth)):
+    """恢复合约"""
+    from blockchain_service import w3
+    contract = get_contract()
+    tx = contract.functions.unpause().build_transaction({
+        "from": w3.eth.account.from_key(settings.PRIVATE_KEY).address,
+        "nonce": w3.eth.get_transaction_count(w3.eth.account.from_key(settings.PRIVATE_KEY).address),
+        "gas": 200000,
+        "gasPrice": w3.eth.gas_price,
+        "chainId": settings.CHAIN_ID,
+    })
+    signed = w3.eth.account.sign_transaction(tx, settings.PRIVATE_KEY)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    return {"success": True, "tx_hash": tx_hash.hex(), "block": receipt["blockNumber"]}
+
+
+@app.post("/admin/cleanup")
+async def cleanup_temp(_auth=Depends(require_auth)):
+    """清理上传临时文件"""
+    upload_dir = os.path.join(os.path.dirname(__file__), "uploads")
+    count = 0
+    if os.path.exists(upload_dir):
+        for f in os.listdir(upload_dir):
+            fp = os.path.join(upload_dir, f)
+            if os.path.isfile(fp):
+                os.remove(fp)
+                count += 1
+    return {"success": True, "deleted_files": count}
 
 @app.get("/logs")
 async def get_operation_logs(
