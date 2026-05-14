@@ -263,15 +263,19 @@ async def get_trend(days: int = 7, db: aiosqlite.Connection = Depends(get_db)):
 
 @app.get("/logs")
 async def get_operation_logs(
-    limit: int = 50,
+    limit: int = 10,
     offset: int = 0,
     db: aiosqlite.Connection = Depends(get_db),
     _auth=Depends(require_auth),
 ):
-    """操作日志分页"""
+    """操作日志分页（修复 total 返回真实总数）"""
+    count_cursor = await db.execute("SELECT COUNT(*) FROM operation_logs")
+    total_row = await count_cursor.fetchone()
+    total_count = total_row[0] if total_row else 0
+
     cursor = await db.execute(
         "SELECT * FROM operation_logs ORDER BY created_at DESC LIMIT ? OFFSET ?",
         (limit, offset),
     )
     rows = await cursor.fetchall()
-    return {"total": len(rows), "logs": [dict(row) for row in rows]}
+    return {"total": total_count, "logs": [dict(row) for row in rows], "limit": limit, "offset": offset}
