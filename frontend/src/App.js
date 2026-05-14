@@ -26,9 +26,7 @@ export default function App() {
   const [theme, setTheme] = useState("dark");
   const [toasts, setToasts] = useState([]);
   const [networkOk, setNetworkOk] = useState(null);
-  const [page, setPage] = useState(0);
-  const [totalLogs, setTotalLogs] = useState(0);
-  const PAGE_SIZE = 10;
+
 
   const addToast = (type, message) => {
     setToasts((prev) => [...prev, { id: Date.now(), type, message }]);
@@ -138,7 +136,7 @@ export default function App() {
           ))}
         </div>
         {activeTab === "upload" && <ErrorBoundary key="upload"><UploadDropzone onSuccess={onUploadSuccess} apiBase={API_BASE} /></ErrorBoundary>}
-        {activeTab === "list" && <ErrorBoundary key="list"><EvidenceList logs={logs} onRefresh={() => fetchLogs(page)} onPageChange={setPage} apiBase={API_BASE} page={page} totalLogs={totalLogs} pageSize={PAGE_SIZE} /></ErrorBoundary>}
+        {activeTab === "list" && <ErrorBoundary key="list"><EvidenceList logs={logs} onRefresh={fetchLogs} apiBase={API_BASE} /></ErrorBoundary>}
         {activeTab === "verify" && <ErrorBoundary key="verify"><VerifyTool apiBase={API_BASE} /></ErrorBoundary>}
       </main>
       <footer className="py-6 mt-16" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>

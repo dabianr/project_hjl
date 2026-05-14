@@ -1,6 +1,7 @@
-// 存证记录列表 — 分页 + 复制按钮 + 相对时间 + 暗色卡片
+// 存证记录列表 — 自管理分页 + 复制按钮 + 相对时间 + 暗色卡片
 import React, { useState } from "react";
 import { FileText, Copy, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import axios from "axios";
 
 function formatRelativeTime(dateStr) {
   if (!dateStr) return "";
@@ -37,12 +38,33 @@ function CopyBtn({ text }) {
   );
 }
 
-// 暗色卡片背景 — 在 index.css 中由 .evidence-card 定义
+const PAGE_SIZE = 10;
 
-export default function EvidenceList({ logs, onRefresh, page, totalLogs, pageSize, onPageChange }) {
-  const totalPages = Math.max(1, Math.ceil(totalLogs / (pageSize || 10)));
+export default function EvidenceList({ logs: initialLogs, apiBase, onRefresh }) {
+  // 本地管理当前页和数据
+  const [page, setPage] = useState(0);
+  const [items, setItems] = useState(initialLogs || []);
+  const [total, setTotal] = useState(0);
 
-  if (!logs || logs.length === 0) {
+  // 同步外部传入的初始数据（首次加载）
+  React.useEffect(() => {
+    if (initialLogs && initialLogs.length > 0) {
+      setItems(initialLogs);
+    }
+  }, [initialLogs]);
+
+  const fetchPage = async (p) => {
+    try {
+      const { data } = await axios.get(apiBase + "/logs", { params: { limit: PAGE_SIZE, offset: p * PAGE_SIZE } });
+      setItems(data.logs || []);
+      setTotal(data.total || 0);
+      setPage(p);
+    } catch (err) {}
+  };
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  if (!items || items.length === 0) {
     return (
       <div className="text-center py-16">
         <FileText className="w-12 h-12 text-gray-700 mx-auto mb-3" />
@@ -56,11 +78,11 @@ export default function EvidenceList({ logs, onRefresh, page, totalLogs, pageSiz
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold dark:text-gray-400 text-gray-500">最近存证记录</h2>
-        <button onClick={() => onRefresh(page)} className="btn-secondary text-xs">刷新</button>
+        <button onClick={() => fetchPage(page)} className="btn-secondary text-xs">刷新</button>
       </div>
 
       <div className="space-y-3">
-        {logs.map((log, idx) => (
+        {items.map((log, idx) => (
           <div key={log.id}
                className="evidence-card p-5 fade-in card-hover"
                style={{ animationDelay: `${idx * 0.05}s` }}>
@@ -94,17 +116,14 @@ export default function EvidenceList({ logs, onRefresh, page, totalLogs, pageSiz
         ))}
       </div>
 
-      {/* 分页 */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 mt-6" style={{ color: "#9ca3af" }}>
-          <button onClick={() => onPageChange(page - 1)} disabled={page <= 0}
+          <button onClick={() => fetchPage(page - 1)} disabled={page <= 0}
             className="p-2 rounded-lg transition-colors disabled:opacity-30 hover:bg-gray-800">
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="text-sm">
-            {page + 1} / {totalPages}
-          </span>
-          <button onClick={() => onPageChange(page + 1)} disabled={page >= totalPages - 1}
+          <span className="text-sm">{page + 1} / {totalPages}</span>
+          <button onClick={() => fetchPage(page + 1)} disabled={page >= totalPages - 1}
             className="p-2 rounded-lg transition-colors disabled:opacity-30 hover:bg-gray-800">
             <ChevronRight className="w-4 h-4" />
           </button>
