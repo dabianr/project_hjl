@@ -1,8 +1,8 @@
 // 导航栏 — 钱包连接 + 深色/浅色切换
 import React from "react";
-import { Shield, Wallet, LogOut, AlertCircle, Sun, Moon } from "lucide-react";
+import { Shield, Wallet, LogOut, AlertCircle, Sun, Moon, SwitchCamera } from "lucide-react";
 
-export default function Navbar({ account, onConnect, onDisconnect, walletError, theme, onToggleTheme, onOpenAdmin }) {
+export default function Navbar({ account, onConnect, onDisconnect, walletError, theme, onToggleTheme, onOpenAdmin, onSwitchDevice }) {
   return (
     <>
       <nav className="border-b border-gray-800" style={{ background: "rgba(0,0,0,0.3)" }}>
@@ -31,6 +31,13 @@ export default function Navbar({ account, onConnect, onDisconnect, walletError, 
             title="管理员控制台">
             <Shield className="w-4 h-4" style={{ color: "#8b5cf6" }} />
             <span className="text-xs font-medium hidden sm:inline" style={{ color: "#8b5cf6" }}>管理员</span>
+          </button>
+          <button onClick={onSwitchDevice}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all opacity-50 hover:opacity-100 text-gray-500 hover:text-gray-300"
+            style={{ border: "1px solid rgba(255,255,255,0.06)" }}
+            title="切换设备/身份">
+            <SwitchCamera className="w-4 h-4" />
+            <span className="text-xs font-medium hidden sm:inline">切换</span>
           </button><button onClick={onToggleTheme} className="p-2 rounded-lg hover:bg-gray-800 dark:text-gray-400 text-gray-500 transition-colors"
               title={theme === "dark" ? "切换浅色" : "切换深色"}>
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}

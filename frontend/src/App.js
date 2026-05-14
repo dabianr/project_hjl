@@ -33,7 +33,12 @@ export default function App() {
   const [toasts, setToasts] = useState([]);
   const [networkOk, setNetworkOk] = useState(null);
   const [logsLoading, setLogsLoading] = useState(false);
+  const deviceId = localStorage.getItem("device_id");
 
+  const switchDevice = () => {
+    localStorage.removeItem("device_id");
+    setHasDeviceId(false);
+  };
 
   const addToast = (type, message) => {
     setToasts((prev) => [...prev, { id: Date.now(), type, message }]);
@@ -70,11 +75,11 @@ export default function App() {
     return () => { window.ethereum.removeListener("accountsChanged", ac); window.ethereum.removeListener("disconnect", dc); };
   }, []);
 
-  const fetchStats = useCallback(async () => {
+  const fetchStats = useCallback(async (uploader) => {
     try {
-      const { data } = await axios.get(`${API_BASE}/stats`, {
-        params: account ? { uploader: account } : {},
-      });
+      const params = {};
+      if (uploader) params.uploader = uploader;
+      const { data } = await axios.get(`${API_BASE}/stats`, { params });
       setStats((prev) => ({ ...prev, ...data }));
       setNetworkOk(true);
     } catch (err) {
@@ -82,7 +87,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [account]);
+  }, []);
 
   const fetchTrend = useCallback(async () => {
     try {
@@ -95,18 +100,19 @@ export default function App() {
     try {
       const { data } = await axios.get(`${API_BASE}/logs`, { params: { limit: 10, offset: 0 } });
       setLogs(data.logs || []);
-      // setTotalLogs removed(data.total || 0);
     } catch (err) {}
   }, []);
 
   useEffect(() => {
-    fetchStats(); fetchLogs(); fetchTrend();
-    const i = setInterval(() => { fetchStats(); fetchTrend(); }, POLL_INTERVAL);
+    const id = account || deviceId;
+    fetchStats(id); fetchLogs(); fetchTrend();
+    const i = setInterval(() => { fetchStats(id); fetchTrend(); }, POLL_INTERVAL);
     return () => clearInterval(i);
-  }, []);
+  }, [account]);
 
   const onUploadSuccess = () => {
-    fetchStats(); fetchLogs(); fetchTrend();
+    const id = account || deviceId;
+    fetchStats(id); fetchLogs(); fetchTrend();
     addToast("success", "存证已提交到区块链");
   };
 
@@ -132,6 +138,7 @@ export default function App() {
          style={{ background: isDark ? "#0d0d15" : "#f5f5f5", color: isDark ? "#d1d5db" : "#374151" }}>
       <Navbar account={account} onConnect={connectWallet}
               onOpenAdmin={() => setShowLogin(true)}
+              onSwitchDevice={switchDevice}
               onDisconnect={disconnectWallet} walletError={walletError}
               theme={theme} onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

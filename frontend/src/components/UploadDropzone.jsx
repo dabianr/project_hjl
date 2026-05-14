@@ -94,9 +94,10 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
     if (files.length !== 1) return;
     const formData = new FormData();
     formData.append("file", files[0]);
+    const uploader = localStorage.getItem("device_id") || "";
     const idMap = { [files[0].id]: true };
     try {
-      const data = await doUpload(`${apiBase}/upload`, formData, null);
+      const data = await doUpload(`${apiBase}/upload?uploader=${encodeURIComponent(uploader)}`, formData, null);
       setSingleResult(data);
       setFileStatus({ [files[0].id]: "success" });
       onSuccess && onSuccess();
@@ -107,8 +108,9 @@ export default function UploadDropzone({ onSuccess, apiBase }) {
     if (files.length === 0) return;
     const formData = new FormData();
     files.forEach((f) => formData.append("files", f));
+    const uploader = localStorage.getItem("device_id") || "";
     try {
-      const data = await doUpload(`${apiBase}/batch-upload`, formData, files);
+      const data = await doUpload(`${apiBase}/batch-upload?uploader=${encodeURIComponent(uploader)}`, formData, files);
       setBatchResult(data);
       const status = {};
       (data.results || []).forEach((r, i) => {

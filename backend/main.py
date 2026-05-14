@@ -31,9 +31,9 @@ from auth import require_auth
 from ipfs_service import upload_to_ipfs
 
 # JWT 配置
-JWT_SECRET = os.getenv("JWT_SECRET", "blockproof-local-jwt-secret-change-in-production")
+JWT_SECRET=os.get...ET", "blockproof-local-jwt-secret-change-in-production")
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+ADMIN_PASSWORD=os.get...RD", "admin123")
 
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 security = HTTPBearer(auto_error=False)
@@ -267,9 +267,21 @@ async def get_evidence_detail(file_hash: str):
 
 
 @app.get("/stats", response_model=StatsResponse)
-async def get_stats(uploader: Optional[str] = Query(None)):
-    """合约统计"""
-    return StatsResponse(**await get_contract_stats(uploader or ""))
+async def get_stats(
+    uploader: Optional[str] = Query(None),
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    """合约统计 + 个人存证数（支持钱包地址或 device_id）"""
+    stats = await get_contract_stats(uploader or "")
+    if uploader:
+        cursor = await db.execute(
+            "SELECT COUNT(DISTINCT tx_hash) FROM operation_logs WHERE uploader = ?",
+            (uploader,)
+        )
+        row = await cursor.fetchone()
+        if row and row[0]:
+            stats["your_evidence_count"] = row[0]
+    return StatsResponse(**stats)
 
 
 @app.get("/trend", response_model=TrendResponse)
