@@ -46,7 +46,14 @@ export default function EvidenceList({ logs: initialLogs, apiBase, onRefresh }) 
   const [items, setItems] = useState(initialLogs || []);
   const [total, setTotal] = useState(0);
 
-  // 同步外部传入的初始数据（首次加载）
+  // 首次挂载时获取 total
+  React.useEffect(() => {
+    axios.get(apiBase + "/logs", { params: { limit: 1, offset: 0 } })
+      .then(({ data }) => setTotal(data.total || 0))
+      .catch(() => {});
+  }, [apiBase]);
+
+  // 同步外部传入的初始数据
   React.useEffect(() => {
     if (initialLogs && initialLogs.length > 0) {
       setItems(initialLogs);
