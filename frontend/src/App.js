@@ -25,7 +25,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState("dark");
   const [toasts, setToasts] = useState([]);
-  const [networkOk, setNetworkOk] = useState(null); // null=检查中
+  const [networkOk, setNetworkOk] = useState(null);
+  const [page, setPage] = useState(0);
+  const [totalLogs, setTotalLogs] = useState(0);
+  const PAGE_SIZE = 10;
 
   const addToast = (type, message) => {
     setToasts((prev) => [...prev, { id: Date.now(), type, message }]);
@@ -82,21 +85,24 @@ export default function App() {
     } catch (err) {}
   }, []);
 
-  const fetchLogs = useCallback(async () => {
+  const fetchLogs = useCallback(async (pageNum) => {
+    const p = pageNum !== undefined ? pageNum : page;
     try {
-      const { data } = await axios.get(`${API_BASE}/logs`, { params: { limit: 10 } });
+      const { data } = await axios.get(`${API_BASE}/logs`, { params: { limit: PAGE_SIZE, offset: p * PAGE_SIZE } });
       setLogs(data.logs || []);
+      setTotalLogs(data.total || 0);
+      if (pageNum !== undefined) setPage(pageNum);
     } catch (err) {}
-  }, []);
+  }, [page]);
 
   useEffect(() => {
-    fetchStats(); fetchLogs(); fetchTrend();
+    fetchStats(); fetchLogs(0); fetchTrend();
     const i = setInterval(() => { fetchStats(); fetchTrend(); }, POLL_INTERVAL);
     return () => clearInterval(i);
   }, [fetchStats, fetchLogs, fetchTrend]);
 
   const onUploadSuccess = () => {
-    fetchStats(); fetchLogs(); fetchTrend();
+    fetchStats(); fetchLogs(0); fetchTrend();
     addToast("success", "存证已提交到区块链");
   };
 
@@ -127,7 +133,7 @@ export default function App() {
           ))}
         </div>
         {activeTab === "upload" && <ErrorBoundary key="upload"><UploadDropzone onSuccess={onUploadSuccess} apiBase={API_BASE} /></ErrorBoundary>}
-        {activeTab === "list" && <ErrorBoundary key="list"><EvidenceList logs={logs} onRefresh={fetchLogs} apiBase={API_BASE} /></ErrorBoundary>}
+        {activeTab === "list" && <ErrorBoundary key="list"><EvidenceList logs={logs} onRefresh={fetchLogs} apiBase={API_BASE} page={page} totalLogs={totalLogs} pageSize={PAGE_SIZE} /></ErrorBoundary>}
         {activeTab === "verify" && <ErrorBoundary key="verify"><VerifyTool apiBase={API_BASE} /></ErrorBoundary>}
       </main>
       <footer className="py-6 mt-16" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>

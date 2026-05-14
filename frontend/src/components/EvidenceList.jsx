@@ -1,6 +1,6 @@
-// 存证记录列表 — 复制按钮 + 相对时间 + 卡片 hover
+// 存证记录列表 — 分页 + 复制按钮 + 相对时间 + 暗色卡片
 import React, { useState } from "react";
-import { FileText, Copy, Check } from "lucide-react";
+import { FileText, Copy, Check, ChevronLeft, ChevronRight } from "lucide-react";
 
 function formatRelativeTime(dateStr) {
   if (!dateStr) return "";
@@ -22,35 +22,27 @@ function formatRelativeTime(dateStr) {
 function CopyBtn({ text }) {
   const [copied, setCopied] = useState(false);
   const handle = async () => {
-    // clipboard API（需要安全上下文）
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      return;
-    } catch {}
-    // fallback：临时 textarea + execCommand
+    try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); return; } catch {}
     try {
       const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed"; ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select(); document.execCommand("copy");
+      document.body.removeChild(ta); setCopied(true); setTimeout(() => setCopied(false), 2000);
     } catch {}
   };
   return (
-    <button onClick={handle} className="ml-1.5 p-1 rounded hover:bg-gray-800 transition-colors inline-flex align-middle"
-            title="复制">
+    <button onClick={handle} className="ml-1.5 p-1 rounded hover:bg-gray-800 transition-colors inline-flex align-middle" title="复制">
       {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-gray-500 hover:text-gray-300" />}
     </button>
   );
 }
 
-export default function EvidenceList({ logs, onRefresh }) {
+const DARK_CARD = "rgba(30,30,50,0.6)";
+const DARK_BORDER = "rgba(255,255,255,0.06)";
+
+export default function EvidenceList({ logs, onRefresh, page, totalLogs, pageSize }) {
+  const totalPages = Math.max(1, Math.ceil(totalLogs / (pageSize || 10)));
+
   if (!logs || logs.length === 0) {
     return (
       <div className="text-center py-16">
@@ -65,21 +57,25 @@ export default function EvidenceList({ logs, onRefresh }) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold dark:text-gray-400 text-gray-500">最近存证记录</h2>
-        <button onClick={onRefresh} className="btn-secondary text-xs">刷新</button>
+        <button onClick={() => onRefresh(page)} className="btn-secondary text-xs">刷新</button>
       </div>
+
       <div className="space-y-3">
         {logs.map((log, idx) => (
-          <div key={log.id} className="card-glow card-hover p-5 fade-in"
-               style={{ animationDelay: `${idx * 0.05}s` }}>
+          <div key={log.id}
+               className="p-5 fade-in card-hover"
+               style={{
+                 background: DARK_CARD,
+                 border: `1px solid ${DARK_BORDER}`,
+                 borderRadius: "16px",
+                 animationDelay: `${idx * 0.05}s`,
+               }}>
             <div className="flex items-start justify-between mb-3">
               <div>
                 <p className="dark:text-white text-gray-900 font-medium">{log.file_name}</p>
-                <p className="text-gray-600 text-xs mt-0.5">
-                  {formatRelativeTime(log.created_at)}
-                </p>
+                <p className="text-gray-600 text-xs mt-0.5">{formatRelativeTime(log.created_at)}</p>
               </div>
-              <span className="text-xs px-2 py-1 rounded-full text-green-400"
-                    style={{ background: "rgba(34,197,94,0.1)" }}>
+              <span className="text-xs px-2 py-1 rounded-full text-green-400" style={{ background: "rgba(34,197,94,0.1)" }}>
                 已存证
               </span>
             </div>
@@ -103,6 +99,23 @@ export default function EvidenceList({ logs, onRefresh }) {
           </div>
         ))}
       </div>
+
+      {/* 分页 */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 mt-6" style={{ color: "#9ca3af" }}>
+          <button onClick={() => onRefresh(page - 1)} disabled={page <= 0}
+            className="p-2 rounded-lg transition-colors disabled:opacity-30 hover:bg-gray-800">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-sm">
+            {page + 1} / {totalPages}
+          </span>
+          <button onClick={() => onRefresh(page + 1)} disabled={page >= totalPages - 1}
+            className="p-2 rounded-lg transition-colors disabled:opacity-30 hover:bg-gray-800">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
