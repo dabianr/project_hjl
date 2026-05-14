@@ -98,14 +98,13 @@ export default function App() {
   }, [page, fetchLogs]);
 
   useEffect(() => {
-    fetchStats(); setPage(0); fetchTrend();
+    fetchStats(); fetchLogs(); fetchTrend();
     const i = setInterval(() => { fetchStats(); fetchTrend(); }, POLL_INTERVAL);
     return () => clearInterval(i);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onUploadSuccess = () => {
-    fetchStats(); setPage(0); fetchTrend();
+    fetchStats(); fetchLogs(); fetchTrend();
     addToast("success", "存证已提交到区块链");
   };
 
