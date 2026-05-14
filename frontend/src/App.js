@@ -92,11 +92,6 @@ export default function App() {
     } catch (err) {}
   }, []);
 
-  // 页号变化时自动加载对应页
-  useEffect(() => {
-    fetchLogs(page);
-  }, [page, fetchLogs]);
-
   useEffect(() => {
     fetchStats(); fetchLogs(); fetchTrend();
     const i = setInterval(() => { fetchStats(); fetchTrend(); }, POLL_INTERVAL);
