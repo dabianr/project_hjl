@@ -84,9 +84,9 @@ export default function App() {
     } catch (err) {}
   }, []);
 
-  const fetchLogs = useCallback(async (p) => {
+  const fetchLogs = useCallback(async () => {
     try {
-      const { data } = await axios.get(`${API_BASE}/logs`, { params: { limit: PAGE_SIZE, offset: p * PAGE_SIZE } });
+      const { data } = await axios.get(`${API_BASE}/logs`, { params: { limit: 10, offset: 0 } });
       setLogs(data.logs || []);
       // setTotalLogs removed(data.total || 0);
     } catch (err) {}
