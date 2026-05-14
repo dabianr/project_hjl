@@ -14,31 +14,15 @@ w3 = Web3(Web3.HTTPProvider(settings.RPC_URL))
 _ABI_PATH = os.path.join(os.path.dirname(__file__), "..", "artifacts", "contracts",
                          "EvidenceStorage.sol", "EvidenceStorage.json")
 
-# 兜底 ABI，编译产物找不到时硬编码顶上
-_FALLBACK_ABI = json.loads("""[
-    {"type":"constructor","inputs":[],"stateMutability":"nonpayable"},
-    {"type":"function","name":"getRecentHashes","inputs":[{"name":"offset","type":"uint256"},{"name":"limit","type":"uint256"}],"outputs":[{"name":"hashes","type":"string[]"},{"name":"total","type":"uint256"}],"stateMutability":"view"},
-    {"type":"function","name":"getEvidence","inputs":[{"name":"fileHash","type":"string"}],"outputs":[{"name":"","type":"tuple","components":[{"name":"fileHash","type":"string"},{"name":"fileName","type":"string"},{"name":"uploader","type":"address"},{"name":"timestamp","type":"uint256"},{"name":"ipfsCID","type":"string"}]}],"stateMutability":"view"},
-    {"type":"function","name":"getUploaderEvidenceCount","inputs":[{"name":"uploader","type":"address"}],"outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"},
-    {"type":"function","name":"owner","inputs":[],"outputs":[{"name":"","type":"address"}],"stateMutability":"view"},
-    {"type":"function","name":"pause","inputs":[],"outputs":[],"stateMutability":"nonpayable"},
-    {"type":"function","name":"paused","inputs":[],"outputs":[{"name":"","type":"bool"}],"stateMutability":"view"},
-    {"type":"function","name":"totalEvidenceCount","inputs":[],"outputs":[{"name":"","type":"uint256"}],"stateMutability":"view"},
-    {"type":"function","name":"transferOwnership","inputs":[{"name":"newOwner","type":"address"}],"outputs":[],"stateMutability":"nonpayable"},
-    {"type":"function","name":"unpause","inputs":[],"outputs":[],"stateMutability":"nonpayable"},
-    {"type":"function","name":"uploadEvidence","inputs":[{"name":"fileHash","type":"string"},{"name":"fileName","type":"string"},{"name":"ipfsCID","type":"string"}],"outputs":[],"stateMutability":"nonpayable"},
-    {"type":"function","name":"verifyEvidence","inputs":[{"name":"fileHash","type":"string"}],"outputs":[{"name":"exists","type":"bool"},{"name":"evidence","type":"tuple","components":[{"name":"fileHash","type":"string"},{"name":"fileName","type":"string"},{"name":"uploader","type":"address"},{"name":"timestamp","type":"uint256"},{"name":"ipfsCID","type":"string"}]}],"stateMutability":"view"},
-    {"type":"event","name":"ContractPaused","inputs":[{"name":"by","type":"address","indexed":true}],"anonymous":false},
-    {"type":"event","name":"ContractUnpaused","inputs":[{"name":"by","type":"address","indexed":true}],"anonymous":false},
-    {"type":"event","name":"EvidenceCreated","inputs":[{"name":"fileHash","type":"string","indexed":true},{"name":"fileName","type":"string","indexed":false},{"name":"uploader","type":"address","indexed":true},{"name":"timestamp","type":"uint256","indexed":false},{"name":"ipfsCID","type":"string","indexed":false}],"anonymous":false}
-]""")
-
 
 def _load_abi():
-    if os.path.exists(_ABI_PATH):
-        with open(_ABI_PATH, "r", encoding="utf-8") as f:
-            return json.load(f).get("abi", _FALLBACK_ABI)
-    return _FALLBACK_ABI
+    if not os.path.exists(_ABI_PATH):
+        raise RuntimeError(
+            f"合约 ABI 文件不存在: {_ABI_PATH}\n"
+            f"请先运行: cd {os.path.join(os.path.dirname(__file__), '..')} && npx hardhat compile"
+        )
+    with open(_ABI_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)["abi"]
 
 
 def get_contract():
