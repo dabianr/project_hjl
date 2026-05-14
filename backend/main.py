@@ -51,6 +51,7 @@ async def require_admin(credentials: HTTPAuthorizationCredentials = Depends(secu
         raise HTTPException(status_code=401, detail="Token 已过期")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="无效的 Token")
+from web3 import Web3
 from blockchain_service import (
     upload_evidence_onchain, get_evidence_onchain,
     verify_evidence_onchain, get_contract_stats, get_contract,
@@ -281,6 +282,8 @@ async def get_stats(
         row = await cursor.fetchone()
         if row and row[0]:
             stats["your_evidence_count"] = row[0]
+        elif not Web3.is_address(uploader):
+            stats["your_evidence_count"] = stats["total_evidence_count"]
     return StatsResponse(**stats)
 
 
