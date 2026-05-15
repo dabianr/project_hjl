@@ -407,6 +407,7 @@ async def admin_dashboard(db: aiosqlite.Connection = Depends(get_db), _auth=Depe
     rows = await cursor.fetchall()
     uploaders = [r["uploader"] for r in rows if r["uploader"] and r["uploader"] != "anonymous"]
     device_stats = dict(Counter(uploaders).most_common(5))
+    total_device_count = len(set(uploaders))
     
     heat = await db.execute(
         "SELECT DATE(created_at) as date, COUNT(*) as count FROM operation_logs "
@@ -416,6 +417,7 @@ async def admin_dashboard(db: aiosqlite.Connection = Depends(get_db), _auth=Depe
     
     return {
         "device_stats": device_stats,
+        "total_device_count": total_device_count,
         "heatmap": [{"date": r["date"], "count": r["count"]} for r in heat_data],
     }
 

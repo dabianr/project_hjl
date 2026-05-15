@@ -127,7 +127,7 @@ export default function App() {
   if (!hasDeviceId) {
     return (
       <PortalPage
-        onEnter={() => setHasDeviceId(true)}
+        onEnter={() => window.location.reload()}
         onOpenAdmin={() => setShowLogin(true)}
       />
     );

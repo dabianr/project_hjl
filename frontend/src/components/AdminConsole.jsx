@@ -236,7 +236,7 @@ export default function AdminConsole({ apiBase, onClose }) {
                 <MiniStat icon={Server} label="Owner" value={status?.contract_owner?.slice(0, 8) + "..."} color="#8b5cf6" />
                 <MiniStat icon={Database} label="存证总数" value={status?.total_evidence_onchain?.toLocaleString()} color="#06d6d6" />
                 <MiniStat icon={HardDrive} label="临时文件" value={status?.temp_upload_files} color="#f59e0b" />
-                <MiniStat icon={Users} label="设备数" value={Object.keys(dashData?.device_stats || {}).length} color="#10b981" />
+                <MiniStat icon={Users} label="设备数" value={dashData?.total_device_count ?? "—"} color="#10b981" />
                 <MiniStat icon={FileText} label="DB 记录" value={status?.total_logs_in_db} color="#6b7280" />
               </div>
 
