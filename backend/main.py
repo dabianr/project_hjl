@@ -406,12 +406,7 @@ async def admin_dashboard(db: aiosqlite.Connection = Depends(get_db), _auth=Depe
     cursor = await db.execute("SELECT uploader FROM operation_logs")
     rows = await cursor.fetchall()
     uploaders = [r["uploader"] for r in rows if r["uploader"] and r["uploader"] != "anonymous"]
-    # 钱包地址独立统计，device_id UUID 合并为"网页用户"
-    wallet_uploaders = [u for u in uploaders if Web3.is_address(u)]
-    web_uploaders = [u for u in uploaders if not Web3.is_address(u)]
-    device_stats = dict(Counter(wallet_uploaders).most_common(4))
-    if web_uploaders:
-        device_stats["网页用户"] = len(web_uploaders)
+    device_stats = dict(Counter(uploaders).most_common(10))
     
     heat = await db.execute(
         "SELECT DATE(created_at) as date, COUNT(*) as count FROM operation_logs "
