@@ -193,7 +193,7 @@ export default function AdminConsole({ apiBase, onClose }) {
     }
   };
 
-  const usagePercent = status?.total_evidence_onchain ? Math.min((status.total_evidence_onchain / 10000) * 100, 100) : 0;
+  const usagePercent = status?.total_evidence_onchain ? Math.min((status.total_evidence_onchain / 200) * 100, 100) : 0;
 
   return (
     <div className={`fixed inset-0 z-[100] flex items-center justify-center transition-all duration-300 ${closing ? "opacity-0" : "opacity-100"}`}>
