@@ -275,17 +275,13 @@ async def get_stats(
     """合约统计 + 个人存证数（支持钱包地址或 device_id）"""
     stats = await get_contract_stats(uploader or "")
     if uploader:
-        if Web3.is_address(uploader):
-            cursor = await db.execute(
-                "SELECT COUNT(DISTINCT tx_hash) FROM operation_logs WHERE uploader = ?",
-                (uploader,)
-            )
-            row = await cursor.fetchone()
-            if row and row[0]:
-                stats["your_evidence_count"] = row[0]
-        else:
-            # device_id 不是钱包地址，显示链上总数（兼容旧 anonymous 记录）
-            stats["your_evidence_count"] = stats["total_evidence_count"]
+        cursor = await db.execute(
+            "SELECT COUNT(DISTINCT tx_hash) FROM operation_logs WHERE uploader = ?",
+            (uploader,)
+        )
+        row = await cursor.fetchone()
+        if row and row[0]:
+            stats["your_evidence_count"] = row[0]
     return StatsResponse(**stats)
 
 
