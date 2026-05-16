@@ -1,0 +1,3 @@
+{"type":"server-started","port":59309,"host":"0.0.0.0","url_host":"localhost","url":"http://localhost:59309","screen_dir":"/home/hjl/Desktop/project_hjl/.superpowers/brainstorm/283345-1778763895/content","state_dir":"/home/hjl/Desktop/project_hjl/.superpowers/brainstorm/283345-1778763895/state"}
+{"type":"screen-added","file":"/home/hjl/Desktop/project_hjl/.superpowers/brainstorm/283345-1778763895/content/approaches.html"}
+{"type":"server-stopped","reason":"idle timeout"}

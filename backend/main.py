@@ -31,9 +31,9 @@ from auth import require_auth
 from ipfs_service import upload_to_ipfs
 
 # JWT 配置
-JWT_SECRET=os.get...ET", "blockproof-local-jwt-secret-change-in-production")
+JWT_SECRET = os.getenv("JWT_SECRET", "blockproof-local-jwt-secret-change-in-production")
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD=os.get...RD", "admin123")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 security = HTTPBearer(auto_error=False)
@@ -419,19 +419,32 @@ async def admin_dashboard(db: aiosqlite.Connection = Depends(get_db), _auth=Depe
 
 @app.get("/logs")
 async def get_operation_logs(
-    limit: int = 10,
-    offset: int = 0,
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    uploader: Optional[str] = None,
     db: aiosqlite.Connection = Depends(get_db),
     _auth=Depends(require_auth),
 ):
-    """操作日志分页（修复 total 返回真实总数）"""
-    count_cursor = await db.execute("SELECT COUNT(*) FROM operation_logs")
-    total_row = await count_cursor.fetchone()
-    total_count = total_row[0] if total_row else 0
+    """操作日志分页，支持按 uploader 过滤"""
+    if uploader:
+        count_cursor = await db.execute(
+            "SELECT COUNT(*) FROM operation_logs WHERE uploader = ?", (uploader,)
+        )
+        total_row = await count_cursor.fetchone()
+        total_count = total_row[0] if total_row else 0
 
-    cursor = await db.execute(
-        "SELECT * FROM operation_logs ORDER BY created_at DESC LIMIT ? OFFSET ?",
-        (limit, offset),
-    )
+        cursor = await db.execute(
+            "SELECT * FROM operation_logs WHERE uploader = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            (uploader, limit, offset),
+        )
+    else:
+        count_cursor = await db.execute("SELECT COUNT(*) FROM operation_logs")
+        total_row = await count_cursor.fetchone()
+        total_count = total_row[0] if total_row else 0
+
+        cursor = await db.execute(
+            "SELECT * FROM operation_logs ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            (limit, offset),
+        )
     rows = await cursor.fetchall()
     return {"total": total_count, "logs": [dict(row) for row in rows], "limit": limit, "offset": offset}

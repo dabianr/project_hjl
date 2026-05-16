@@ -9,6 +9,7 @@ import VerifyTool from "./components/VerifyTool";
 import PortalPage from "./components/PortalPage";
 import AdminLogin from "./components/AdminLogin";
 import AdminConsole from "./components/AdminConsole";
+import MyEvidence from "./components/MyEvidence";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Toast from "./components/Toast";
 
@@ -119,6 +120,7 @@ export default function App() {
   const isDark = theme === "dark";
   const tabs = [
     { key: "upload", label: "上传存证" },
+    { key: "my", label: "我的存证" },
     { key: "list", label: "存证列表" },
     { key: "verify", label: "验证工具" },
 
@@ -155,6 +157,7 @@ export default function App() {
           ))}
         </div>
         {activeTab === "upload" && <ErrorBoundary key="upload"><UploadDropzone onSuccess={onUploadSuccess} apiBase={API_BASE} /></ErrorBoundary>}
+        {activeTab === "my" && <ErrorBoundary key="my"><MyEvidence apiBase={API_BASE} /></ErrorBoundary>}
         {activeTab === "list" && <ErrorBoundary key="list"><EvidenceList logs={logs} onRefresh={fetchLogs} apiBase={API_BASE} loading={logsLoading} /></ErrorBoundary>}
         {activeTab === "verify" && <ErrorBoundary key="verify"><VerifyTool apiBase={API_BASE} /></ErrorBoundary>}
       </main>

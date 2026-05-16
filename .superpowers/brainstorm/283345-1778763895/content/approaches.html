@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BlockProof 设计方案选择</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0f; color: #e5e7eb; padding: 40px; }
+  h1 { font-size: 28px; margin-bottom: 8px; background: linear-gradient(135deg, #8b5cf6, #06d6d6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .subtitle { color: #6b7280; margin-bottom: 40px; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 1400px; margin: 0 auto; }
+  .card { border-radius: 20px; padding: 24px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); transition: all 0.2s; }
+  .card:hover { border-color: rgba(139,92,246,0.3); transform: translateY(-2px); }
+  .card.selected { border-color: #8b5cf6; box-shadow: 0 0 30px rgba(139,92,246,0.15); }
+  .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; margin-bottom: 16px; }
+  .badge.hacker { background: rgba(0,255,65,0.15); color: #00ff41; }
+  .badge.premium { background: rgba(139,92,246,0.15); color: #8b5cf6; }
+  .badge.cyber { background: rgba(255,45,85,0.15); color: #ff2d55; }
+  h2 { font-size: 18px; margin-bottom: 4px; }
+  .tagline { color: #6b7280; font-size: 12px; margin-bottom: 16px; }
+  .preview { width: 100%; height: 280px; border-radius: 12px; margin-bottom: 16px; position: relative; overflow: hidden; }
+  .pros { list-style: none; padding: 0; }
+  .pros li { padding: 6px 0; font-size: 13px; color: #9ca3af; display: flex; align-items: start; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .pros li:last-child { border: none; }
+  .pros li::before { content: "▸"; color: #8b5cf6; font-weight: bold; }
+  .recommend { margin-top: 12px; padding: 8px 12px; border-radius: 8px; font-size: 12px; background: rgba(139,92,246,0.1); color: #a78bfa; border: 1px solid rgba(139,92,246,0.15); }
+  
+  /* 预览样式 */
+  .preview.cyber { background: linear-gradient(135deg, #0d0d1a 0%, #1a0a2e 50%, #0d0d1a 100%); }
+  .preview.cyber .grid-lines { position: absolute; inset: 0; background-image: linear-gradient(rgba(139,92,246,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(139,92,246,0.05) 1px, transparent 1px); background-size: 40px 40px; }
+  .preview.cyber .glow-orb { position: absolute; width: 200px; height: 200px; border-radius: 50%; filter: blur(60px); opacity: 0.3; }
+  .preview.cyber .glow-orb.purple { background: #8b5cf6; top: -40px; right: -40px; }
+  .preview.cyber .glow-orb.cyan { background: #06d6d6; bottom: -40px; left: -40px; }
+  .preview.cyber .portal-box { position: absolute; inset: 40px; border: 1px solid rgba(139,92,246,0.2); border-radius: 16px; backdrop-filter: blur(20px); background: rgba(255,255,255,0.02); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .preview.cyber .portal-title { font-size: 16px; font-weight: bold; color: white; margin-bottom: 4px; }
+  .preview.cyber .portal-sub { font-size: 10px; color: #6b7280; margin-bottom: 12px; }
+  .preview.cyber .portal-input { width: 70%; padding: 8px; border-radius: 8px; border: 1px solid rgba(139,92,246,0.2); background: rgba(0,0,0,0.3); color: white; text-align: center; font-size: 11px; font-family: monospace; }
+  .preview.cyber .portal-btn { margin-top: 10px; padding: 8px 28px; border-radius: 8px; border: none; background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; font-size: 12px; cursor: pointer; }
+  .preview.cyber .admin-icon { position: absolute; bottom: 12px; right: 12px; width: 24px; height: 24px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 12px; opacity: 0.3; }
+
+  .preview.hacker { background: #0a0a0a; }
+  .preview.hacker .scanline { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,0.015) 2px, rgba(0,255,65,0.015) 4px); pointer-events: none; }
+  .preview.hacker .terminal-box { position: absolute; inset: 30px; border: 1px solid rgba(0,255,65,0.15); border-radius: 12px; background: rgba(0,0,0,0.6); display: flex; flex-direction: column; }
+  .preview.hacker .terminal-header { padding: 8px 14px; border-bottom: 1px solid rgba(0,255,65,0.1); display: flex; gap: 6px; }
+  .preview.hacker .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .preview.hacker .dot.r { background: #ff5f57; }
+  .preview.hacker .dot.y { background: #ffbd2e; }
+  .preview.hacker .dot.g { background: #28c840; }
+  .preview.hacker .terminal-body { flex: 1; padding: 14px; font-family: 'Courier New', monospace; font-size: 11px; color: #00ff41; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+  .preview.hacker .terminal-body .cursor { animation: blink 1s step-end infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .preview.premium { background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #0f0f1a 100%); }
+  .preview.premium .bg-gradient { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.08) 0%, transparent 60%); }
+  .preview.premium .glass-card { position: absolute; inset: 35px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); backdrop-filter: blur(20px); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .preview.premium .glass-card::before { content: ''; position: absolute; inset: -1px; border-radius: 20px; background: linear-gradient(135deg, rgba(139,92,246,0.2), transparent, rgba(6,214,214,0.1)); z-index: -1; }
+  .preview.premium .logo-icon { width: 40px; height: 40px; border-radius: 14px; background: linear-gradient(135deg, #8b5cf6, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 10px; }
+  .preview.premium .glass-input { width: 65%; padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); color: white; text-align: center; font-size: 10px; font-family: monospace; margin-top: 8px; }
+  .preview.premium .glass-btn { margin-top: 12px; padding: 10px 36px; border-radius: 10px; border: none; background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; font-size: 12px; font-weight: 500; cursor: pointer; box-shadow: 0 4px 20px rgba(139,92,246,0.2); }
+  .preview.premium .admin-icon { position: absolute; bottom: 12px; right: 14px; font-size: 14px; opacity: 0.25; }
+</style>
+</head>
+<body>
+<h1>🔮 BlockProof 门户 & 管理界面设计方案</h1>
+<p class="subtitle">三种视觉风格 · 点击选择你喜欢的 → 我会按此风格出完整设计文档</p>
+
+<div class="grid">
+  <!-- 方案 A -->
+  <div class="card cyber" onclick="select('cyber')" id="card-cyber">
+    <span class="badge cyber">方案 A</span>
+    <h2>赛博朋克 · 霓虹网格</h2>
+    <p class="tagline">Cyberpunk · Neon Grid</p>
+    <div class="preview cyber">
+      <div class="grid-lines"></div>
+      <div class="glow-orb purple"></div>
+      <div class="glow-orb cyan"></div>
+      <div class="portal-box">
+        <div class="portal-title">✦ BLOCKPROOF ✦</div>
+        <div class="portal-sub">区块链电子文件存证系统</div>
+        <div class="portal-input">550e8400-e29b-41d4-a716-...</div>
+        <button class="portal-btn">⚡ 进入存证系统</button>
+        <div style="margin-top:8px;font-size:10px;color:#6b7280;">已有密钥？点击输入</div>
+      </div>
+      <div class="admin-icon">🛡</div>
+    </div>
+    <ul class="pros">
+      <li>紫色 + 青色霓虹灯效，视觉冲击力强</li>
+      <li>网格线 + 发光光晕，有"区块链"科技感</li>
+      <li>适合偏年轻化、极客风格的项目</li>
+    </ul>
+    <div class="recommend">球光 + 网格线纯 CSS 实现，无需图片</div>
+  </div>
+
+  <!-- 方案 B -->
+  <div class="card hacker" onclick="select('hacker')" id="card-hacker">
+    <span class="badge hacker">方案 B</span>
+    <h2>黑客终端 · 矩阵风格</h2>
+    <p class="tagline">Hacker Terminal · Matrix</p>
+    <div class="preview hacker">
+      <div class="scanline"></div>
+      <div class="terminal-box">
+        <div class="terminal-header">
+          <span class="dot r"></span>
+          <span class="dot y"></span>
+          <span class="dot g"></span>
+        </div>
+        <div class="terminal-body">
+          <div style="margin-bottom:6px;opacity:0.6;">> BLOCKPROOF v1.0</div>
+          <div style="margin-bottom:10px;opacity:0.4;font-size:10px;">区块链存证终端</div>
+          <div style="font-size:10px;opacity:0.5;">device_id: 550e...a716</div>
+          <div style="margin-top:8px;padding:6px 18px;border:1px solid rgba(0,255,65,0.2);border-radius:4px;font-size:11px;">[ 进入系统 ]</div>
+          <div style="margin-top:10px;font-size:10px;opacity:0.3;display:flex;gap:4px;">
+            <span class="cursor">▊</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <ul class="pros">
+      <li>绿色矩阵风格，极简 + 极客</li>
+      <li>扫描线动画，氛围感强</li>
+      <li>适合技术向、安全向的品牌调性</li>
+    </ul>
+    <div class="recommend">⚠️ 绿黑配色辨识度高，但非技术用户可能觉得有距离感</div>
+  </div>
+
+  <!-- 方案 C -->
+  <div class="card premium" onclick="select('premium')" id="card-premium">
+    <span class="badge premium">方案 C ⭐</span>
+    <h2>深空玻璃 · 高级质感</h2>
+    <p class="tagline">Dark Glassmorphism · Premium</p>
+    <div class="preview premium">
+      <div class="bg-gradient"></div>
+      <div class="glass-card">
+        <div class="logo-icon">🔗</div>
+        <div style="font-size:15px;font-weight:600;color:white;margin-bottom:2px;">BlockProof</div>
+        <div style="font-size:10px;color:#6b7280;margin-bottom:10px;">区块链电子文件存证系统</div>
+        <div style="font-size:10px;color:#6b7280;margin-bottom:4px;">临时身份密钥</div>
+        <div class="glass-input">550e8400-e29b-41d4-a716-446655440000</div>
+        <button class="glass-btn">进入应用</button>
+        <div style="margin-top:8px;font-size:10px;color:rgba(139,92,246,0.4);cursor:pointer;">已有密钥？粘贴到上方</div>
+      </div>
+      <div class="admin-icon">🛡️</div>
+    </div>
+    <ul class="pros">
+      <li>毛玻璃 + 渐变光晕，高级感最强</li>
+      <li>与现有 UI 风格完全一致，融合最好</li>
+      <li>不花哨但精致，适合司法/存证等严肃场景</li>
+    </ul>
+    <div class="recommend">推荐 — 与当前 BlockProof 现有样式无缝衔接</div>
+  </div>
+</div>
+
+<script>
+function select(id) {
+  document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('card-' + id).classList.add('selected');
+  // 发送选择到父窗口
+  window.parent.postMessage({ type: 'design-choice', design: id, name: {
+    cyber: '赛博朋克 · 霓虹网格',
+    hacker: '黑客终端 · 矩阵风格',
+    premium: '深空玻璃 · 高级质感'
+  }[id] }, '*');
+}
+</script>
+</body>
+</html>
