@@ -507,27 +507,41 @@ async def generate_certificate(
         c.drawString(140, y, text)
         y -= line_h
 
-    # QR 码 — 尝试 qrcode 库
-    qr_ok = False
-    try:
-        import qrcode
-        qr = qrcode.QRCode(box_size=4, border=2)
-        qr.add_data(verify_url)
-        qr.make(fit=True)
-        qr_img = qr.make_image(fill_color="black", back_color="white")
-        tmp = io.BytesIO()
-        qr_img.save(tmp, format="PNG")
-        tmp.seek(0)
-        c.drawImage(tmp, width - 160, y - 10, width=120, height=120)
-        qr_ok = True
-    except Exception:
-        # qrcode 未安装或 Pillow 编码失败 — 不影响 PDF 主体
-        pass
+    # 验证方式 — 右侧画一个干净的信息块（替代 QR 码，避免 NixOS 上 PIL 编码黑框）
+    box_x = width - 175
+    box_y = y - 30
+    box_w = 150
+    box_h = 80
 
-    if not qr_ok:
-        c.setFont("Helvetica", 8)
-        c.setFillColor(HexColor("#888888"))
-        c.drawString(60, y - 20, "（扫码验证或访问链接验证）")
+    # 淡紫色背景
+    c.setFillColor(HexColor("#F0EEFF"))
+    c.roundRect(box_x, box_y, box_w, box_h, 8, fill=1, stroke=0)
+
+    # 边框
+    c.setStrokeColor(HexColor("#D0C8FF"))
+    c.roundRect(box_x, box_y, box_w, box_h, 8, fill=0, stroke=1)
+
+    # 标题
+    c.setFillColor(HexColor("#6B5DE7"))
+    c.setFont("Helvetica-Bold", 9)
+    c.drawCentredString(box_x + box_w / 2, box_y + box_h - 18, "验证方式 / Verification")
+
+    # 链接
+    c.setFillColor(HexColor("#444444"))
+    c.setFont("Helvetica", 7)
+    lines = []
+    url = verify_url
+    while len(url) > 28:
+        lines.append(url[:28])
+        url = url[28:]
+    lines.append(url)
+    for i, ln in enumerate(lines):
+        c.drawString(box_x + 10, box_y + box_h - 36 - i * 12, ln)
+
+    # 提示
+    c.setFillColor(HexColor("#888888"))
+    c.setFont("Helvetica-Oblique", 6)
+    c.drawCentredString(box_x + box_w / 2, box_y + 8, "将链接粘贴到浏览器验证存证真伪")
 
     # 底部说明
     c.setFont("Helvetica", 8)
