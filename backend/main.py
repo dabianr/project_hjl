@@ -450,8 +450,8 @@ async def generate_certificate(
     created = datetime.datetime.fromisoformat(log["created_at"]) if isinstance(log["created_at"], str) else log["created_at"]
     cert_no = f"ZC-{created.strftime('%Y%m%d')}-{log_id:03d}"
 
-    # 验证链接
-    verify_url = f"https://bigdogbarks.top/verify/{log['file_hash']}"
+    # 验证链接 — 前端验证页
+    verify_url = f"https://bigdogbarks.top/?verify={log['file_hash']}"
 
     # 尝试导入 reportlab，失败则返回错误
     try:
@@ -464,54 +464,55 @@ async def generate_certificate(
     except ImportError:
         raise HTTPException(status_code=500, detail="PDF 生成库未安装（reportlab）")
 
-    # 注册 CJK 字体 — 查找系统中支持中文的 TrueType 字体
-    CJK_FONT = "Helvetica"  # fallback
+    # 注册 CJK 字体
+    CJK_FONT = "Helvetica"
     import glob
-    cjk_candidates = [
+    for pat in [
         "/nix/store/*ghostscript*/share/ghostscript/*/Resource/CIDFSubst/DroidSansFallback.ttf",
         "/usr/share/fonts/truetype/wqy/wqy-microhei.ttf",
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
-    ]
-    cjk_path = None
-    for pattern in cjk_candidates:
-        matches = glob.glob(pattern)
-        if matches:
-            cjk_path = matches[0]
+    ]:
+        m = glob.glob(pat)
+        if m:
+            try:
+                pdfmetrics.registerFont(TTFont("CJKFont", m[0]))
+                CJK_FONT = "CJKFont"
+            except Exception:
+                pass
             break
-    if cjk_path:
-        try:
-            pdfmetrics.registerFont(TTFont("CJKFont", cjk_path))
-            CJK_FONT = "CJKFont"
-        except Exception:
-            pass
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
     width, height = A4
 
-    # 背景
+    # === 背景 ===
     c.setFillColor(HexColor("#F5F5F5"))
     c.rect(0, 0, width, height, fill=1, stroke=0)
 
+    # === 上部：标题 + 基础信息 ===
+    y_top = height - 60
+
     # 标题
     c.setFillColor(HexColor("#1a1a2e"))
-    c.setFont(CJK_FONT, 24)
-    c.drawCentredString(width / 2, height - 60, "区块链电子数据存证证书")
+    c.setFont(CJK_FONT, 22)
+    c.drawCentredString(width / 2, y_top, "区块链电子数据存证证书")
+    y_top -= 30
 
     # 证书编号
-    c.setFont(CJK_FONT, 12)
+    c.setFont(CJK_FONT, 11)
     c.setFillColor(HexColor("#555555"))
-    c.drawCentredString(width / 2, height - 90, f"证书编号: {cert_no}")
+    c.drawCentredString(width / 2, y_top, f"证书编号: {cert_no}")
+    y_top -= 22
 
     # 分隔线
     c.setStrokeColor(HexColor("#CCCCCC"))
-    c.line(50, height - 105, width - 50, height - 105)
+    c.line(50, y_top, width - 50, y_top)
+    y_top -= 20
 
-    # 内容区域
-    y = height - 140
-    line_h = 28
+    # 信息行
+    line_h = 26
     info_items = [
         ("文件名称", log.get("file_name", "N/A")),
         ("SM3 哈希", log.get("file_hash", "N/A")),
@@ -519,59 +520,67 @@ async def generate_certificate(
         ("区块高度", str(log.get("block_number", "N/A"))),
         ("交易哈希", log.get("tx_hash", "N/A")),
         ("上传时间", log.get("created_at", "N/A")),
-        ("验证地址", verify_url),
     ]
 
     c.setFont(CJK_FONT, 10)
     for label, value in info_items:
         c.setFillColor(HexColor("#333333"))
-        c.drawString(60, y, f"{label}:")
-        c.setFillColor(HexColor("#1a1a2e"))
-        # 如果文本太长，换行
+        # 动态截断长值显示
         text = str(value)
-        c.drawString(140, y, text)
-        y -= line_h
+        if len(text) > 70:
+            text = text[:67] + "..."
+        c.drawString(55, y_top, f"{label}:  {text}")
+        y_top -= line_h
 
-    # 验证方式 — 右侧画一个干净的信息块
-    box_x = width - 175
-    box_y = y - 30
-    box_w = 150
-    box_h = 80
+    # === 下部：二维码区域 ===
+    try:
+        import qrcode
+        qr = qrcode.QRCode(box_size=4, border=2)
+        qr.add_data(verify_url)
+        qr.make(fit=True)
+        matrix = qr.modules
+        n = len(matrix)
+        module_size = 3.5
+        qr_size = n * module_size
+        qr_x = (width - qr_size) / 2
+        qr_y = 180  # 底部上方留空间给 footer
 
-    # 淡紫色背景
-    c.setFillColor(HexColor("#F0EEFF"))
-    c.roundRect(box_x, box_y, box_w, box_h, 8, fill=1, stroke=0)
+        # 白色背景
+        c.setFillColor(HexColor("#FFFFFF"))
+        c.roundRect(qr_x - 10, qr_y - 10, qr_size + 20, qr_size + 20, 6, fill=1, stroke=0)
 
-    # 边框
-    c.setStrokeColor(HexColor("#D0C8FF"))
-    c.roundRect(box_x, box_y, box_w, box_h, 8, fill=0, stroke=1)
+        # 浅色边框
+        c.setStrokeColor(HexColor("#DDDDDD"))
+        c.roundRect(qr_x - 10, qr_y - 10, qr_size + 20, qr_size + 20, 6, fill=0, stroke=1)
 
-    # 标题
-    c.setFillColor(HexColor("#6B5DE7"))
-    c.setFont(CJK_FONT, 9)
-    c.drawCentredString(box_x + box_w / 2, box_y + box_h - 18, "验证方式 / Verification")
+        # 画黑色模块
+        c.setFillColor(HexColor("#000000"))
+        for row in range(n):
+            for col in range(n):
+                if matrix[row][col]:
+                    c.rect(qr_x + col * module_size,
+                           qr_y + (n - 1 - row) * module_size,
+                           module_size, module_size, fill=1, stroke=0)
 
-    # 链接
-    c.setFillColor(HexColor("#444444"))
-    c.setFont("Helvetica", 7)
-    lines = []
-    url = verify_url
-    while len(url) > 28:
-        lines.append(url[:28])
-        url = url[28:]
-    lines.append(url)
-    for i, ln in enumerate(lines):
-        c.drawString(box_x + 10, box_y + box_h - 36 - i * 12, ln)
+        # 二维码下方提示文字
+        c.setFillColor(HexColor("#888888"))
+        c.setFont(CJK_FONT, 8)
+        c.drawCentredString(width / 2, qr_y + qr_size + 20, "扫码验证存证真伪")
+        c.setFont("Helvetica", 6)
+        c.drawCentredString(width / 2, qr_y + qr_size + 10, verify_url)
+    except ImportError:
+        # qrcode 未装 — 显示文字链接
+        c.setFont(CJK_FONT, 9)
+        c.setFillColor(HexColor("#666666"))
+        c.drawCentredString(width / 2, height * 0.35, "验证链接（复制到浏览器打开）：")
+        c.setFont("Helvetica", 7)
+        c.setFillColor(HexColor("#8b5cf6"))
+        c.drawCentredString(width / 2, height * 0.35 - 14, verify_url)
 
-    # 提示
-    c.setFillColor(HexColor("#888888"))
-    c.setFont(CJK_FONT, 6)
-    c.drawCentredString(box_x + box_w / 2, box_y + 8, "将链接粘贴到浏览器验证存证真伪")
-
-    # 底部说明
+    # === 底部说明 ===
     c.setFont(CJK_FONT, 8)
     c.setFillColor(HexColor("#999999"))
-    c.drawCentredString(width / 2, 40, "本证书由区块链电子数据存证系统自动生成，最终解释权归平台所有")
+    c.drawCentredString(width / 2, 40, "本证书由区块链电子数据存证系统自动生成")
     c.drawCentredString(width / 2, 28, f"生成时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     c.save()

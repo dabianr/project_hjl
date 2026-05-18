@@ -10,6 +10,7 @@ import PortalPage from "./components/PortalPage";
 import AdminLogin from "./components/AdminLogin";
 import AdminConsole from "./components/AdminConsole";
 import MyEvidence from "./components/MyEvidence";
+import VerifyResult from "./components/VerifyResult";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Toast from "./components/Toast";
 
@@ -35,6 +36,19 @@ export default function App() {
   const [networkOk, setNetworkOk] = useState(null);
   const [logsLoading, setLogsLoading] = useState(false);
   const deviceId = localStorage.getItem("device_id");
+
+  // 检测 ?verify=hash 参数 — 二维码扫描入口
+  const [verifyHash, setVerifyHash] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("verify") || null;
+  });
+
+  // 检测到 verify 时清除 URL 参数
+  useEffect(() => {
+    if (verifyHash) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [verifyHash]);
 
   const switchDevice = () => {
     localStorage.removeItem("device_id");
@@ -125,6 +139,11 @@ export default function App() {
     { key: "verify", label: "验证工具" },
 
   ];
+
+  // 二维码验证入口优先于门户页
+  if (verifyHash) {
+    return <VerifyResult hash={verifyHash} onBack={() => setVerifyHash(null)} />;
+  }
 
   if (!hasDeviceId) {
     return (
