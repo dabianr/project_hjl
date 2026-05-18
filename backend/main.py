@@ -451,7 +451,7 @@ async def generate_certificate(
     cert_no = f"ZC-{created.strftime('%Y%m%d')}-{log_id:03d}"
 
     # 验证链接 — 前端验证页
-    verify_url = f"https://bigdogbarks.top/?verify={log['file_hash']}"
+    verify_url = f"https://www.bigdogbarks.top/?verify={log['file_hash']}"
 
     # 尝试导入 reportlab，失败则返回错误
     try:
