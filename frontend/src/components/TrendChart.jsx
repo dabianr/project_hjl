@@ -1,19 +1,40 @@
-// 存证柱状图 — ECharts + 空状态占位
-import React, { useEffect, useRef } from "react";
+// 存证柱状图 — ECharts + 空状态占位 + 天数选择器
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as echarts from "echarts";
 import { BarChart3 } from "lucide-react";
 
-export default function TrendChart({ data = [] }) {
+export default function TrendChart({ data = [], apiBase = "/api" }) {
   const ref = useRef();
+  const [days, setDays] = useState(7);
+  const [trendData, setTrendData] = useState(data);
+
+  const fetchTrend = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/trend?days=${days}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      setTrendData(json.data || json);
+    } catch {
+      // silently fail
+    }
+  }, [days, apiBase]);
 
   useEffect(() => {
-    if (!ref.current || data.length === 0) return;
+    if (data && data.length > 0) {
+      setTrendData(data);
+    } else {
+      fetchTrend();
+    }
+  }, [data, fetchTrend]);
+
+  useEffect(() => {
+    if (!ref.current || trendData.length === 0) return;
     const chart = echarts.init(ref.current, null, { renderer: "svg" });
     chart.setOption({
       tooltip: { trigger: "axis" },
       grid: { top: 20, right: 20, bottom: 30, left: 50 },
       xAxis: {
-        type: "category", data: data.map((d) => d.date),
+        type: "category", data: trendData.map((d) => d.date),
         axisLine: { lineStyle: { color: "#4b5563" } },
         axisLabel: { color: "#9ca3af" },
       },
@@ -23,7 +44,7 @@ export default function TrendChart({ data = [] }) {
         axisLabel: { color: "#9ca3af" },
       },
       series: [{
-        data: data.map((d) => d.count),
+        data: trendData.map((d) => d.count),
         type: "bar",
         barWidth: "40%",
         itemStyle: {
@@ -37,17 +58,41 @@ export default function TrendChart({ data = [] }) {
       backgroundColor: "transparent",
     });
     return () => chart.dispose();
-  }, [data]);
+  }, [trendData]);
 
-  if (data.length === 0) {
+  if (trendData.length === 0) {
     return (
-      <div className="card-glow mt-6 h-64 flex flex-col items-center justify-center">
+      <div className="card-glow mt-6 h-64 flex flex-col items-center justify-center relative">
+        <select
+          value={days}
+          onChange={(e) => { setDays(Number(e.target.value)); }}
+          className="absolute top-3 right-3 text-xs px-2 py-1 rounded border-0 outline-none cursor-pointer"
+          style={{ background: "rgba(255,255,255,0.03)", color: "#9ca3af" }}
+        >
+          <option value={7}>7天</option>
+          <option value={30}>30天</option>
+          <option value={90}>90天</option>
+        </select>
         <BarChart3 className="w-10 h-10 text-gray-600 mb-3" />
         <p className="text-gray-500 text-sm">暂无趋势数据</p>
-        <p className="text-gray-600 text-xs mt-1">上传文件后将显示 7 天存证趋势</p>
+        <p className="text-gray-600 text-xs mt-1">上传文件后将显示 {days} 天存证趋势</p>
       </div>
     );
   }
 
-  return <div ref={ref} className="w-full h-64 mt-6 rounded-xl" />;
+  return (
+    <div className="relative mt-6">
+      <select
+        value={days}
+        onChange={(e) => { setDays(Number(e.target.value)); }}
+        className="absolute top-3 right-3 z-10 text-xs px-2 py-1 rounded border-0 outline-none cursor-pointer"
+        style={{ background: "rgba(255,255,255,0.03)", color: "#9ca3af" }}
+      >
+        <option value={7}>7天</option>
+        <option value={30}>30天</option>
+        <option value={90}>90天</option>
+      </select>
+      <div ref={ref} className="w-full h-64 rounded-xl" />
+    </div>
+  );
 }

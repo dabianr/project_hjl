@@ -1,12 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { Shield, Key, ArrowRight, Copy, Check, ChevronDown, ChevronRight } from "lucide-react";
 
+function BlinkingCursor() {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const timer = setInterval(() => setVisible(v => !v), 530);
+    return () => clearInterval(timer);
+  }, []);
+  return <span style={{ opacity: visible ? 1 : 0, color: "#8b5cf6", fontWeight: "bold" }}>|</span>;
+}
+
 export default function PortalPage({ onEnter, onOpenAdmin }) {
   const [deviceId, setDeviceId] = useState("");
   const [inputValue, setInputValue] = useState("");
   const [copied, setCopied] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [clickCount, setClickCount] = useState(0);
+  const [displayText, setDisplayText] = useState("");
+  const [showInput, setShowInput] = useState(false);
 
   useEffect(() => {
     let id = localStorage.getItem("device_id");
@@ -17,6 +28,20 @@ export default function PortalPage({ onEnter, onOpenAdmin }) {
     }
     setDeviceId(id);
   }, []);
+
+  useEffect(() => {
+    if (!deviceId) return;
+    let i = 0;
+    const timer = setInterval(() => {
+      i++;
+      setDisplayText(deviceId.slice(0, i));
+      if (i >= deviceId.length) {
+        clearInterval(timer);
+        setShowInput(true);
+      }
+    }, 30);
+    return () => clearInterval(timer);
+  }, [deviceId]);
 
   const handleEnter = () => {
     if (inputValue.trim()) localStorage.setItem("device_id", inputValue.trim());
@@ -76,7 +101,10 @@ export default function PortalPage({ onEnter, onOpenAdmin }) {
               <p className="text-xs font-medium mb-2" style={{ color: "#6b7280" }}>你的临时身份密钥</p>
               <div className="flex items-center gap-2 p-3 rounded-xl mb-4 font-mono text-sm"
                    style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <span className="flex-1 truncate text-gray-300 text-xs">{deviceId}</span>
+                <span className="flex-1 truncate text-gray-300 text-xs">
+                  {displayText}
+                  {displayText === deviceId && deviceId.length > 0 && <BlinkingCursor />}
+                </span>
                 <button onClick={handleCopy} className="p-1.5 rounded-lg hover:bg-gray-800 transition-colors shrink-0">
                   {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-gray-500" />}
                 </button>
@@ -84,16 +112,20 @@ export default function PortalPage({ onEnter, onOpenAdmin }) {
             </>
           )}
 
-          <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleEnter()}
-            placeholder="粘贴已有密钥..."
-            className="w-full p-3 rounded-xl text-sm text-center font-mono mb-4 outline-none transition-all placeholder-gray-600 text-gray-300"
-            style={{ background: "rgba(0,0,0,0.2)", border: "1px solid rgba(255,255,255,0.06)" }} />
-          <button onClick={handleEnter}
-            className="w-full py-3 rounded-xl font-medium text-sm text-white flex items-center justify-center gap-2 transition-all"
-            style={{ background: "linear-gradient(135deg, #8b5cf6, #6366f1)", boxShadow: "0 4px 20px rgba(139,92,246,0.2)" }}>
-            进入应用 <ArrowRight className="w-4 h-4" />
-          </button>
+          {showInput && (
+            <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleEnter()}
+              placeholder="粘贴已有密钥..."
+              className="w-full p-3 rounded-xl text-sm text-center font-mono mb-4 outline-none transition-all placeholder-gray-600 text-gray-300"
+              style={{ background: "rgba(0,0,0,0.2)", border: "1px solid rgba(255,255,255,0.06)" }} />
+          )}
+          {showInput && (
+            <button onClick={handleEnter}
+              className="w-full py-3 rounded-xl font-medium text-sm text-white flex items-center justify-center gap-2 transition-all"
+              style={{ background: "linear-gradient(135deg, #8b5cf6, #6366f1)", boxShadow: "0 4px 20px rgba(139,92,246,0.2)" }}>
+              进入应用 <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
       <button onClick={handleShield}

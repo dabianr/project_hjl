@@ -63,13 +63,15 @@ const CARD_DATA = [
   { icon: ShieldAlert, label: "合约状态",    key: "orange" },
 ];
 
-export default function Dashboard({ stats, loading }) {
+export default function Dashboard({ stats, loading, recentLogs, apiBase }) {
   const values = [
     stats.total_evidence_count,
     stats.current_block_height,
     stats.your_evidence_count,
     stats.contract_paused ? "已暂停" : "运行中",
   ];
+
+  const today_count = stats.today_count ?? 0;
 
   return (
     <div className="fade-in">
@@ -94,7 +96,24 @@ export default function Dashboard({ stats, loading }) {
             ))
         }
       </div>
-      {!loading && <TrendChart data={stats.trend || []} />}
+      {!loading && <TrendChart data={stats.trend || []} apiBase={apiBase} />}
+      {!loading && (
+        <div className="card-glow p-4 mt-4">
+          <p className="text-sm font-semibold dark:text-gray-300 text-gray-600 mb-3">
+            📊 今日存证: {today_count} 次
+          </p>
+          <div className="space-y-2">
+            {recentLogs && recentLogs.length > 0
+              ? recentLogs.slice(0, 3).map((log, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm dark:text-gray-400 text-gray-500">
+                    <span>📄 {log.file_name} · {log.time_ago}</span>
+                  </div>
+                ))
+              : <p className="text-sm dark:text-gray-500 text-gray-400">暂无记录</p>
+            }
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 // 我的存证 — 按 device_id 过滤个人记录，完整凭证详情
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { FileText, File, Image, Archive, Copy, Check } from "lucide-react";
+import { FileText, File, Image, Archive, Copy, Check, Download } from "lucide-react";
 
 export default function MyEvidence({ apiBase }) {
   const [logs, setLogs] = useState([]);
@@ -49,6 +49,28 @@ export default function MyEvidence({ apiBase }) {
     );
   }
 
+  // CSV 导出
+  const exportCSV = () => {
+    if (!logs || logs.length === 0) return;
+    const headers = ["文件名", "哈希值", "IPFS CID", "交易哈希", "时间", "区块号"];
+    const rows = logs.map(log => [
+      log.file_name || "",
+      log.file_hash || "",
+      log.ipfs_cid || "",
+      log.tx_hash || "",
+      log.created_at || "",
+      log.block_number != null ? String(log.block_number) : ""
+    ]);
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `我的存证_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const totalPages = Math.ceil(total / limit);
   const deviceLabel = deviceId ? deviceId.slice(0, 8) + "..." : "未知";
 
@@ -62,10 +84,16 @@ export default function MyEvidence({ apiBase }) {
             设备密钥: <span className="font-mono">{deviceLabel}</span> · 共 {total} 条记录
           </p>
         </div>
-        <button onClick={() => fetchMyLogs(page)}
-          className="btn-secondary text-xs px-3 py-1.5">
-          刷新
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={exportCSV}
+            className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1">
+            <Download className="w-3 h-3" /> 导出 CSV
+          </button>
+          <button onClick={() => fetchMyLogs(page)}
+            className="btn-secondary text-xs px-3 py-1.5">
+            刷新
+          </button>
+        </div>
       </div>
 
       {/* 加载态 */}
@@ -108,10 +136,16 @@ export default function MyEvidence({ apiBase }) {
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs px-2 py-0.5 rounded-full text-green-400 shrink-0 ml-2"
-                        style={{background:"rgba(34,197,94,0.1)"}}>
-                    已上链
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <a href={`${apiBase}/certificate/${log.id}`} target="_blank" rel="noopener noreferrer"
+                       className="text-xs text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-0.5">
+                      📄 下载证书
+                    </a>
+                    <span className="text-xs px-2 py-0.5 rounded-full text-green-400"
+                          style={{background:"rgba(34,197,94,0.1)"}}>
+                      已上链
+                    </span>
+                  </div>
                 </div>
 
                 {/* 第二行: 哈希/IPFS/交易 */}

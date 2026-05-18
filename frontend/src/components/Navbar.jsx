@@ -1,8 +1,36 @@
-// 导航栏 — 钱包连接 + 深色/浅色切换
-import React from "react";
+// 导航栏 — 钱包连接 + 深色/浅色切换 + 管理员三击入口
+import React, { useState, useEffect, useRef } from "react";
 import { Shield, Wallet, LogOut, AlertCircle, Sun, Moon, SwitchCamera } from "lucide-react";
 
 export default function Navbar({ account, onConnect, onDisconnect, walletError, theme, onToggleTheme, onOpenAdmin, onSwitchDevice }) {
+  const [clickCount, setClickCount] = useState(0);
+  const resetTimer = useRef(null);
+
+  const handleShieldClick = () => {
+    setClickCount((prev) => {
+      const next = prev + 1;
+      if (next >= 3) {
+        onOpenAdmin?.();
+        setClickCount(0);
+        if (resetTimer.current) clearTimeout(resetTimer.current);
+        resetTimer.current = null;
+        return 0;
+      }
+      if (resetTimer.current) clearTimeout(resetTimer.current);
+      resetTimer.current = setTimeout(() => {
+        setClickCount(0);
+        resetTimer.current = null;
+      }, 1000);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (resetTimer.current) clearTimeout(resetTimer.current);
+    };
+  }, []);
+
   return (
     <>
       <nav className="border-b border-gray-800" style={{ background: "rgba(0,0,0,0.3)" }}>
@@ -25,7 +53,7 @@ export default function Navbar({ account, onConnect, onDisconnect, walletError, 
               }
             </svg>
           </div>
-          <button onClick={() => onOpenAdmin?.()}
+          <button onClick={handleShieldClick}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all opacity-60 hover:opacity-100"
             style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.15)" }}
             title="管理员控制台">

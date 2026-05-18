@@ -8,11 +8,13 @@ import logging
 import asyncio
 import datetime
 import jwt
+import io
 import aiosqlite
 from contextlib import asynccontextmanager
 from typing import Optional, List
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Request, Query, Depends
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -272,7 +274,7 @@ async def get_stats(
     uploader: Optional[str] = Query(None),
     db: aiosqlite.Connection = Depends(get_db),
 ):
-    """合约统计 + 个人存证数（支持钱包地址或 device_id）"""
+    """合约统计 + 个人存证数（支持钱包地址或 device_id）+ 今日存证数"""
     stats = await get_contract_stats(uploader or "")
     if uploader:
         cursor = await db.execute(
@@ -282,6 +284,14 @@ async def get_stats(
         row = await cursor.fetchone()
         if row and row[0]:
             stats["your_evidence_count"] = row[0]
+
+    # 今日存证数
+    today_cursor = await db.execute(
+        "SELECT COUNT(*) FROM operation_logs WHERE DATE(created_at) = DATE('now')"
+    )
+    today_row = await today_cursor.fetchone()
+    stats["today_count"] = today_row[0] if today_row else 0
+
     return StatsResponse(**stats)
 
 
@@ -417,34 +427,175 @@ async def admin_dashboard(db: aiosqlite.Connection = Depends(get_db), _auth=Depe
         "heatmap": [{"date": r["date"], "count": r["count"]} for r in heat_data],
     }
 
+
+# ===== PDF 证书 =====
+
+
+@app.get("/certificate/{log_id}")
+async def generate_certificate(
+    log_id: int,
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    """生成存证 PDF 证书"""
+    cursor = await db.execute(
+        "SELECT * FROM operation_logs WHERE id = ?", (log_id,)
+    )
+    row = await cursor.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="存证记录不存在")
+
+    log = dict(row)
+
+    # 构造证书编号：ZC-YYYYMMDD-{id:03d}
+    created = datetime.datetime.fromisoformat(log["created_at"]) if isinstance(log["created_at"], str) else log["created_at"]
+    cert_no = f"ZC-{created.strftime('%Y%m%d')}-{log_id:03d}"
+
+    # 验证链接
+    verify_url = f"https://bigdogbarks.top/verify/{log['file_hash']}"
+
+    # 尝试导入 reportlab，失败则返回错误
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.units import mm
+        from reportlab.lib.colors import HexColor
+    except ImportError:
+        raise HTTPException(status_code=500, detail="PDF 生成库未安装（reportlab）")
+
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    width, height = A4
+
+    # 背景
+    c.setFillColor(HexColor("#F5F5F5"))
+    c.rect(0, 0, width, height, fill=1, stroke=0)
+
+    # 标题
+    c.setFillColor(HexColor("#1a1a2e"))
+    c.setFont("Helvetica-Bold", 24)
+    c.drawCentredString(width / 2, height - 60, "区块链电子数据存证证书")
+
+    # 证书编号
+    c.setFont("Helvetica", 12)
+    c.setFillColor(HexColor("#555555"))
+    c.drawCentredString(width / 2, height - 90, f"证书编号: {cert_no}")
+
+    # 分隔线
+    c.setStrokeColor(HexColor("#CCCCCC"))
+    c.line(50, height - 105, width - 50, height - 105)
+
+    # 内容区域
+    y = height - 140
+    line_h = 28
+    info_items = [
+        ("文件名称", log.get("file_name", "N/A")),
+        ("SM3 哈希", log.get("file_hash", "N/A")),
+        ("IPFS CID", log.get("ipfs_cid", "N/A")),
+        ("区块高度", str(log.get("block_number", "N/A"))),
+        ("交易哈希", log.get("tx_hash", "N/A")),
+        ("上传时间", log.get("created_at", "N/A")),
+        ("验证地址", verify_url),
+    ]
+
+    c.setFont("Helvetica", 10)
+    for label, value in info_items:
+        c.setFillColor(HexColor("#333333"))
+        c.drawString(60, y, f"{label}:")
+        c.setFillColor(HexColor("#1a1a2e"))
+        # 如果文本太长，换行
+        text = str(value)
+        c.drawString(140, y, text)
+        y -= line_h
+
+    # QR 码 — 尝试 qrcode 库
+    qr_ok = False
+    try:
+        import qrcode
+        qr = qrcode.QRCode(box_size=4, border=2)
+        qr.add_data(verify_url)
+        qr.make(fit=True)
+        qr_img = qr.make_image(fill_color="black", back_color="white")
+        # 保存到临时 BytesIO 然后画到 PDF
+        from io import BytesIO as _BytesIO
+        tmp = _BytesIO()
+        qr_img.save(tmp, format="PNG")
+        tmp.seek(0)
+        c.drawImage(tmp, width - 160, y - 10, width=120, height=120)
+        qr_ok = True
+    except ImportError:
+        pass
+
+    if not qr_ok:
+        try:
+            # Pure Python SVG fallback
+            import qrcode as qrcode_svg
+            qr_svg = qrcode_svg.QRCode(box_size=4, border=2)
+            qr_svg.add_data(verify_url)
+            qr_svg.make(fit=True)
+            svg_str = qr_svg.make_image().to_string()  # returns XML string
+            # reportlab doesn't natively support SVG, so skip drawing
+        except ImportError:
+            pass
+        # Show text fallback
+        c.setFont("Helvetica", 8)
+        c.setFillColor(HexColor("#888888"))
+        c.drawString(60, y - 20, "（扫码验证或访问链接验证）")
+
+    # 底部说明
+    c.setFont("Helvetica", 8)
+    c.setFillColor(HexColor("#999999"))
+    c.drawCentredString(width / 2, 40, "本证书由区块链电子数据存证系统自动生成，最终解释权归平台所有")
+    c.drawCentredString(width / 2, 28, f"生成时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+    c.save()
+    buf.seek(0)
+
+    filename = f"certificate_{log_id}.pdf"
+    return StreamingResponse(
+        buf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @app.get("/logs")
 async def get_operation_logs(
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
     uploader: Optional[str] = None,
+    keyword: Optional[str] = Query(None),
     db: aiosqlite.Connection = Depends(get_db),
     _auth=Depends(require_auth),
 ):
-    """操作日志分页，支持按 uploader 过滤"""
+    """操作日志分页，支持按 uploader 过滤和 keyword 搜索文件名"""
+
+    # Build WHERE clauses dynamically
+    conditions = []
+    params = []
+
     if uploader:
-        count_cursor = await db.execute(
-            "SELECT COUNT(*) FROM operation_logs WHERE uploader = ?", (uploader,)
-        )
-        total_row = await count_cursor.fetchone()
-        total_count = total_row[0] if total_row else 0
+        conditions.append("uploader = ?")
+        params.append(uploader)
 
-        cursor = await db.execute(
-            "SELECT * FROM operation_logs WHERE uploader = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            (uploader, limit, offset),
-        )
-    else:
-        count_cursor = await db.execute("SELECT COUNT(*) FROM operation_logs")
-        total_row = await count_cursor.fetchone()
-        total_count = total_row[0] if total_row else 0
+    if keyword:
+        conditions.append("file_name LIKE ?")
+        params.append(f"%{keyword}%")
 
-        cursor = await db.execute(
-            "SELECT * FROM operation_logs ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            (limit, offset),
-        )
+    where_sql = ""
+    if conditions:
+        where_sql = " WHERE " + " AND ".join(conditions)
+
+    # Count
+    count_cursor = await db.execute(
+        f"SELECT COUNT(*) FROM operation_logs{where_sql}", params
+    )
+    total_row = await count_cursor.fetchone()
+    total_count = total_row[0] if total_row else 0
+
+    # Data
+    cursor = await db.execute(
+        f"SELECT * FROM operation_logs{where_sql} ORDER BY created_at DESC LIMIT ? OFFSET ?",
+        [*params, limit, offset],
+    )
     rows = await cursor.fetchall()
     return {"total": total_count, "logs": [dict(row) for row in rows], "limit": limit, "offset": offset}

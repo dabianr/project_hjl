@@ -144,7 +144,7 @@ export default function App() {
               onDisconnect={disconnectWallet} walletError={walletError}
               theme={theme} onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <ErrorBoundary><Dashboard stats={stats} loading={loading} /></ErrorBoundary>
+        <ErrorBoundary><Dashboard stats={stats} loading={loading} recentLogs={logs.slice(0, 3)} /></ErrorBoundary>
         <div className="flex gap-2 mt-10 mb-6">
           {tabs.map((tab) => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
@@ -156,10 +156,18 @@ export default function App() {
             >{tab.label}</button>
           ))}
         </div>
-        {activeTab === "upload" && <ErrorBoundary key="upload"><UploadDropzone onSuccess={onUploadSuccess} apiBase={API_BASE} /></ErrorBoundary>}
-        {activeTab === "my" && <ErrorBoundary key="my"><MyEvidence apiBase={API_BASE} /></ErrorBoundary>}
-        {activeTab === "list" && <ErrorBoundary key="list"><EvidenceList logs={logs} onRefresh={fetchLogs} apiBase={API_BASE} loading={logsLoading} /></ErrorBoundary>}
-        {activeTab === "verify" && <ErrorBoundary key="verify"><VerifyTool apiBase={API_BASE} /></ErrorBoundary>}
+        {activeTab === "upload" && (
+          <div className="fade-in-right"><ErrorBoundary key="upload"><UploadDropzone onSuccess={onUploadSuccess} apiBase={API_BASE} /></ErrorBoundary></div>
+        )}
+        {activeTab === "my" && (
+          <div className="fade-in-left"><ErrorBoundary key="my"><MyEvidence apiBase={API_BASE} /></ErrorBoundary></div>
+        )}
+        {activeTab === "list" && (
+          <div className="fade-in-up"><ErrorBoundary key="list"><EvidenceList logs={logs} onRefresh={fetchLogs} apiBase={API_BASE} loading={logsLoading} /></ErrorBoundary></div>
+        )}
+        {activeTab === "verify" && (
+          <div className="fade-in-scale"><ErrorBoundary key="verify"><VerifyTool apiBase={API_BASE} /></ErrorBoundary></div>
+        )}
       </main>
       <footer className="py-6 mt-16" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>
         <div className="flex items-center justify-center gap-4 text-xs opacity-60">

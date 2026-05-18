@@ -1,6 +1,6 @@
 // 存证记录列表 — 自管理分页 + 复制按钮 + 相对时间 + 暗色卡片
-import React, { useState } from "react";
-import { FileText, Copy, Check, ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useState, useEffect as useEffectOnce } from "react";
+import { FileText, Copy, Check, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import axios from "axios";
 import { ListSkeleton } from "./Skeleton";
 
@@ -46,6 +46,8 @@ export default function EvidenceList({ logs: initialLogs, apiBase, onRefresh, lo
   const [page, setPage] = useState(0);
   const [items, setItems] = useState(initialLogs || []);
   const [total, setTotal] = useState(0);
+  const [keyword, setKeyword] = useState("");
+  const [searchItems, setSearchItems] = useState(null);
 
   // 首次挂载时获取 total
   React.useEffect(() => {
@@ -61,6 +63,20 @@ export default function EvidenceList({ logs: initialLogs, apiBase, onRefresh, lo
     }
   }, [initialLogs]);
 
+  // 关键字搜索（防抖）
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!keyword.trim()) {
+        setSearchItems(null);
+        return;
+      }
+      axios.get(apiBase + "/logs", { params: { limit: 50, offset: 0, file_name: keyword.trim() } })
+        .then(({ data }) => setSearchItems(data.logs || []))
+        .catch(() => {});
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [keyword, apiBase]);
+
   const fetchPage = async (p) => {
     try {
       const { data } = await axios.get(apiBase + "/logs", { params: { limit: PAGE_SIZE, offset: p * PAGE_SIZE } });
@@ -71,6 +87,28 @@ export default function EvidenceList({ logs: initialLogs, apiBase, onRefresh, lo
   };
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const displayItems = searchItems !== null ? searchItems : items;
+
+  const exportCSV = () => {
+    const data = searchItems !== null ? searchItems : items;
+    if (!data || data.length === 0) return;
+    const headers = ["文件名", "哈希值", "IPFS CID", "交易哈希", "时间"];
+    const rows = data.map(log => [
+      log.file_name || "",
+      log.file_hash || "",
+      log.ipfs_cid || "",
+      log.tx_hash || "",
+      log.created_at || ""
+    ]);
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `存证记录_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   if (loading) {
     return (
@@ -98,11 +136,20 @@ export default function EvidenceList({ logs: initialLogs, apiBase, onRefresh, lo
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold dark:text-gray-400 text-gray-500">最近存证记录</h2>
-        <button onClick={() => fetchPage(page)} className="btn-secondary text-xs">刷新</button>
+        <div className="flex items-center gap-2">
+          <input type="text" value={keyword} onChange={(e) => setKeyword(e.target.value)}
+            placeholder="🔍 搜索文件名..."
+            className="px-3 py-1.5 rounded-lg text-xs outline-none transition-all placeholder-gray-600 text-gray-300"
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.06)", width: "160px" }} />
+          <button onClick={exportCSV} className="btn-secondary text-xs flex items-center gap-1">
+            <Download className="w-3 h-3" /> 导出 CSV
+          </button>
+          <button onClick={() => fetchPage(page)} className="btn-secondary text-xs">刷新</button>
+        </div>
       </div>
 
       <div className="space-y-3">
-        {items.map((log, idx) => (
+        {displayItems.map((log, idx) => (
           <div key={log.id}
                className="evidence-card p-5 fade-in card-hover"
                style={{ animationDelay: `${idx * 0.05}s` }}>
@@ -111,9 +158,15 @@ export default function EvidenceList({ logs: initialLogs, apiBase, onRefresh, lo
                 <p className="dark:text-white text-gray-900 font-medium">{log.file_name}</p>
                 <p className="text-gray-600 text-xs mt-0.5">{formatRelativeTime(log.created_at)}</p>
               </div>
-              <span className="text-xs px-2 py-1 rounded-full text-green-400" style={{ background: "rgba(34,197,94,0.1)" }}>
-                已存证
-              </span>
+              <div className="flex items-center gap-2">
+                <a href={`${apiBase}/certificate/${log.id}`} target="_blank" rel="noopener noreferrer"
+                   className="text-xs text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1">
+                  📄 下载证书
+                </a>
+                <span className="text-xs px-2 py-1 rounded-full text-green-400" style={{ background: "rgba(34,197,94,0.1)" }}>
+                  已存证
+                </span>
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
               <div>
@@ -136,7 +189,7 @@ export default function EvidenceList({ logs: initialLogs, apiBase, onRefresh, lo
         ))}
       </div>
 
-      {totalPages > 1 && (
+      {searchItems === null && totalPages > 1 && (
         <div className="flex items-center justify-center gap-4 mt-6" style={{ color: "#9ca3af" }}>
           <button onClick={() => fetchPage(page - 1)} disabled={page <= 0}
             className="p-2 rounded-lg transition-colors disabled:opacity-30 hover:bg-gray-800">
