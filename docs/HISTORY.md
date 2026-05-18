@@ -1,6 +1,6 @@
 # BlockProof — 实现历史
 
-> 从 init 到完整平台，覆盖 91+ 次提交
+> 从 init 到完整平台，覆盖 100+ 次提交
 > 周期：2026-05-11 → 至今
 
 ---
@@ -28,7 +28,7 @@
 ## 第四阶段：前端 UI 基础（5月11日）
 
 - Toast 通知、骨架屏、Dark/Light 主题切换
-- MetaMask 钱包连接（后来被踢出，变为可选）
+- MetaMask 钱包连接（后来变为可选）
 - 上传/验证/列表三 tab 结构
 
 ## 第五阶段：Dashboard + 趋势图（5月11日）
@@ -78,7 +78,7 @@
 - `/logs` total 返回真实总数（SQL `COUNT(*)` 而非 `len(rows)`）
 - EvidenceList 暗色卡片 `#1a1a2e`
 - dark class 挂 `<html>` 修复证据卡片发白
-- 分页回弹：使用 useRef → useState → 自管理分页
+- 分页回弹：useRef → useState → 自管理分页
 - 组件挂载时独立取 total
 - 完整 DEBUG 文档记录所有问题
 
@@ -95,7 +95,7 @@
 - AdminLogin.jsx：用户名密码浮层、JWT 存储
 - AdminConsole.jsx：MiniStat 卡片、SVG RingChart、DeviceBar、ActivityTimeline、HeatCalendar
 
-修复经历：
+修复经历（10 个 bug）：
 1. useEffect 内 return JSX → 编译报错
 2. 密钥默认展开 → 折叠（ChevronDown/ChevronRight 图标）
 3. 管理员入口透明不可见 → 导航栏 visible 按钮
@@ -107,11 +107,34 @@
 9. 使用率 0% → 分母改 200
 10. 设备总数取错 → 后端加 `total_device_count`
 
-## 第十四阶段：我的存证 tab（5月16日）
+## 第十四阶段：我的存证 + 搜索 + 特性增强（5月15-16日）
 
-- `/logs` 端点加 `uploader` 过滤参数
-- MyEvidence.jsx 新建组件：分页/文件图标/完整凭证详情/复制按钮/骨架屏
-- App.js 加「我的存证」tab
+- `/logs` 端点加 `uploader` 和 `keyword` 过滤
+- MyEvidence.jsx 新建组件：分页/文件图标/CSV导出/证书下载链接
+- 6 个 UI 动画：shimmer 骨架屏、涟漪按钮、卡片发光边框、tab 方向动画、类型图标、打字机效果
+- npm run build 验证通过
+
+修复：
+- 沙箱 venv _posixsubprocess 缺失 → 重建 venv
+- sqlalchemy 断连错误 → `close()` 改为 `await db.close()`
+
+## 第十五阶段：PDF 证书 + 验证结果页（5月18日）
+
+### PDF 证书重写
+- 上半部：标题 + 6 项基础信息（文件名称/SM3/IPFS CID/区块高度/交易哈希/上传时间）
+- 下半部：验证二维码（reportlab 原生 rect 画模块，不依赖 PIL/Pillow）
+- CJK 字体注册：自动查找 DroidSansFallback.ttf，解决 Helvetica 无中文字形导致的 ZapfDingbats 黑框
+
+### 二维码验证
+- VerifyResult.jsx 全屏验证结果页（绿色通过/红色失败 + 存证详情）
+- App.js 检测 `?verify=hash` URL 参数，优先于门户页渲染
+- 二维码链接到 `https://www.bigdogbarks.top/?verify={hash}`
+
+### 修复
+- PDF 证书黑框（reportlab PNG 解码失败）→ 用 reportlab 原生 rect 画 QR 码
+- 中文乱码（Helvetica 无 CJK 字形 fallback 到 ZapfDingbats）→ 注册 DroidSansFallback.ttf
+- 卡片发光动效诡异（conic-gradient 单点旋转）→ 改为 hover 时 box-shadow + 边框过渡
+- 二维码 525 错误（apex 域名 SSL 配置不一致）→ 改为 `www.bigdogbarks.top`
 
 ---
 
@@ -123,29 +146,4 @@
 | v2 | `72f53f8a` | 公网部署成功 |
 | v3 | `b95210f9` | 门户页+管理员控制台上线 |
 | v4 | `ea352ea5` | 控制台仪表盘完成 |
-
-## 项目文件树
-
-```
-project_hjl/
-├── backend/
-│   ├── main.py                  # FastAPI 入口（40+ 路由）
-│   ├── blockchain_service.py    # Web3 合约交互
-│   ├── auth.py                  # API_KEY + JWT
-│   ├── database.py              # SQLite 初始化
-│   ├── models.py                # Pydantic 模型
-│   ├── config.py                # 环境变量
-│   └── ipfs_service.py          # IPFS 上传
-├── contracts/
-│   └── EvidenceStorage.sol      # 存证合约
-├── frontend/src/
-│   ├── App.js                   # 根组件
-│   └── components/              # 13 个组件
-├── docs/
-│   ├── ARCHITECTURE.md          # 架构文档
-│   ├── HISTORY.md               # 本文
-│   ├── DEBUG.md                 # 故障排查
-│   └── worklog/                 # 每日工作日志
-├── start.sh                     # 一键启动
-└── README.md
-```
+| v5 | `3a469653` | PDF 证书+验证结果页上线 |
