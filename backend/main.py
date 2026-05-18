@@ -459,8 +459,33 @@ async def generate_certificate(
         from reportlab.pdfgen import canvas
         from reportlab.lib.units import mm
         from reportlab.lib.colors import HexColor
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
     except ImportError:
         raise HTTPException(status_code=500, detail="PDF 生成库未安装（reportlab）")
+
+    # 注册 CJK 字体 — 查找系统中支持中文的 TrueType 字体
+    CJK_FONT = "Helvetica"  # fallback
+    import glob
+    cjk_candidates = [
+        "/nix/store/*ghostscript*/share/ghostscript/*/Resource/CIDFSubst/DroidSansFallback.ttf",
+        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+    ]
+    cjk_path = None
+    for pattern in cjk_candidates:
+        matches = glob.glob(pattern)
+        if matches:
+            cjk_path = matches[0]
+            break
+    if cjk_path:
+        try:
+            pdfmetrics.registerFont(TTFont("CJKFont", cjk_path))
+            CJK_FONT = "CJKFont"
+        except Exception:
+            pass
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
@@ -472,11 +497,11 @@ async def generate_certificate(
 
     # 标题
     c.setFillColor(HexColor("#1a1a2e"))
-    c.setFont("Helvetica-Bold", 24)
+    c.setFont(CJK_FONT, 24)
     c.drawCentredString(width / 2, height - 60, "区块链电子数据存证证书")
 
     # 证书编号
-    c.setFont("Helvetica", 12)
+    c.setFont(CJK_FONT, 12)
     c.setFillColor(HexColor("#555555"))
     c.drawCentredString(width / 2, height - 90, f"证书编号: {cert_no}")
 
@@ -497,7 +522,7 @@ async def generate_certificate(
         ("验证地址", verify_url),
     ]
 
-    c.setFont("Helvetica", 10)
+    c.setFont(CJK_FONT, 10)
     for label, value in info_items:
         c.setFillColor(HexColor("#333333"))
         c.drawString(60, y, f"{label}:")
@@ -507,7 +532,7 @@ async def generate_certificate(
         c.drawString(140, y, text)
         y -= line_h
 
-    # 验证方式 — 右侧画一个干净的信息块（替代 QR 码，避免 NixOS 上 PIL 编码黑框）
+    # 验证方式 — 右侧画一个干净的信息块
     box_x = width - 175
     box_y = y - 30
     box_w = 150
@@ -523,7 +548,7 @@ async def generate_certificate(
 
     # 标题
     c.setFillColor(HexColor("#6B5DE7"))
-    c.setFont("Helvetica-Bold", 9)
+    c.setFont(CJK_FONT, 9)
     c.drawCentredString(box_x + box_w / 2, box_y + box_h - 18, "验证方式 / Verification")
 
     # 链接
@@ -540,11 +565,11 @@ async def generate_certificate(
 
     # 提示
     c.setFillColor(HexColor("#888888"))
-    c.setFont("Helvetica-Oblique", 6)
+    c.setFont(CJK_FONT, 6)
     c.drawCentredString(box_x + box_w / 2, box_y + 8, "将链接粘贴到浏览器验证存证真伪")
 
     # 底部说明
-    c.setFont("Helvetica", 8)
+    c.setFont(CJK_FONT, 8)
     c.setFillColor(HexColor("#999999"))
     c.drawCentredString(width / 2, 40, "本证书由区块链电子数据存证系统自动生成，最终解释权归平台所有")
     c.drawCentredString(width / 2, 28, f"生成时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
