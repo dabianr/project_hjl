@@ -515,28 +515,16 @@ async def generate_certificate(
         qr.add_data(verify_url)
         qr.make(fit=True)
         qr_img = qr.make_image(fill_color="black", back_color="white")
-        # 保存到临时 BytesIO 然后画到 PDF
-        from io import BytesIO as _BytesIO
-        tmp = _BytesIO()
+        tmp = io.BytesIO()
         qr_img.save(tmp, format="PNG")
         tmp.seek(0)
         c.drawImage(tmp, width - 160, y - 10, width=120, height=120)
         qr_ok = True
-    except ImportError:
+    except Exception:
+        # qrcode 未安装或 Pillow 编码失败 — 不影响 PDF 主体
         pass
 
     if not qr_ok:
-        try:
-            # Pure Python SVG fallback
-            import qrcode as qrcode_svg
-            qr_svg = qrcode_svg.QRCode(box_size=4, border=2)
-            qr_svg.add_data(verify_url)
-            qr_svg.make(fit=True)
-            svg_str = qr_svg.make_image().to_string()  # returns XML string
-            # reportlab doesn't natively support SVG, so skip drawing
-        except ImportError:
-            pass
-        # Show text fallback
         c.setFont("Helvetica", 8)
         c.setFillColor(HexColor("#888888"))
         c.drawString(60, y - 20, "（扫码验证或访问链接验证）")

@@ -34,25 +34,13 @@ html { scroll-behavior: smooth; }
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 16px;
   backdrop-filter: blur(12px);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
-.card-glow::before {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: 16px;
-  background: conic-gradient(from 0deg, transparent, transparent, transparent, #8b5cf6, transparent, transparent);
-  animation: spin 3s linear infinite;
-  opacity: 0;
-  transition: opacity 0.3s;
-  z-index: -1;
-  pointer-events: none;
+.card-glow:hover {
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.15), 0 0 40px rgba(139, 92, 246, 0.05);
 }
-.card-glow:hover::before {
-  opacity: 1;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+.card-glow::before { display: none; }
 
 /* 自定义滚动条 */
 .card-glow ::-webkit-scrollbar { width: 4px; }
